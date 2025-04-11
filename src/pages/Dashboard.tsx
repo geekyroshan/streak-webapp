@@ -5,6 +5,10 @@ import { ContributionCalendar } from '@/components/ContributionCalendar';
 import { RepositoryBrowser } from '@/components/RepositoryBrowser';
 import { GapAnalysis } from '@/components/GapAnalysis';
 import { WelcomeModal } from '@/components/WelcomeModal';
+import { BackdatingCard } from '@/components/BackdatingCard';
+import { Button } from '@/components/ui/button';
+import { ArrowRight } from 'lucide-react';
+import { Link } from 'react-router-dom';
 
 const Dashboard = () => {
   return (
@@ -28,6 +32,9 @@ const Dashboard = () => {
         </div>
       </div>
       
+      {/* Prominent backdating card */}
+      <BackdatingCard />
+      
       <StreakStats />
       
       <ContributionCalendar />
@@ -35,6 +42,14 @@ const Dashboard = () => {
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         <RepositoryBrowser />
         <GapAnalysis />
+      </div>
+      
+      <div className="flex justify-center mt-6">
+        <Link to="/streak">
+          <Button size="lg" className="px-8 gap-2">
+            Manage Your Streak <ArrowRight className="h-4 w-4" />
+          </Button>
+        </Link>
       </div>
       
       <WelcomeModal />
