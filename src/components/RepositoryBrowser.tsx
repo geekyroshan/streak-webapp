@@ -3,10 +3,11 @@ import { GlassCard, GlassCardHeader, GlassCardContent } from '@/components/ui/gl
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { GitFork, Search, Star, Loader2 } from 'lucide-react';
+import { GitFork, Search, Star, Loader2, AlertCircle } from 'lucide-react';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { useQuery } from '@tanstack/react-query';
 import { repoService } from '@/lib/api';
+import { format, parseISO } from 'date-fns';
 
 interface RepositoryProps {
   name: string;
@@ -77,10 +78,12 @@ const Repository = ({
       </p>
       
       <div className="flex items-center gap-4 text-xs">
-        <div className="flex items-center gap-1.5">
-          <div className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: languageColor }} />
-          <span>{language}</span>
-        </div>
+        {language && (
+          <div className="flex items-center gap-1.5">
+            <div className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: languageColor }} />
+            <span>{language}</span>
+          </div>
+        )}
         
         <div className="flex items-center gap-1">
           <Star className="w-3.5 h-3.5" />
@@ -103,28 +106,31 @@ export const RepositoryBrowser = () => {
   const [selectedRepos, setSelectedRepos] = useState<string[]>([]);
   
   // Fetch repositories from API
-  const { data: repositories, isLoading, error } = useQuery({
+  const { data: repositories, isLoading, error, isError } = useQuery({
     queryKey: ['repositories'],
     queryFn: repoService.getUserRepositories,
     staleTime: 5 * 60 * 1000, // 5 minutes
+    retry: 2, // Retry failed requests twice
   });
   
   // Format API repositories data
   const formattedRepos = repositories?.map(repo => ({
     name: repo.name,
-    description: repo.description,
-    stars: repo.stargazers_count,
-    forks: repo.forks_count,
-    language: repo.language || 'Unknown',
+    description: repo.description || '',
+    stars: repo.stargazers_count || 0,
+    forks: repo.forks_count || 0,
+    language: repo.language || '',
     languageColor: languageColors[repo.language] || '#ccc',
-    updatedAt: new Date(repo.updated_at).toLocaleDateString()
+    updatedAt: repo.updated_at ? format(parseISO(repo.updated_at), 'MMM d, yyyy') : 'Unknown date'
   })) || [];
   
+  // Filter repositories based on search query
   const filteredRepositories = formattedRepos.filter(repo => 
     repo.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
     (repo.description && repo.description.toLowerCase().includes(searchQuery.toLowerCase()))
   );
   
+  // Toggle repository selection
   const toggleRepoSelection = (repoName: string) => {
     setSelectedRepos(prev => 
       prev.includes(repoName) 
@@ -148,6 +154,7 @@ export const RepositoryBrowser = () => {
             className="pl-9 glass-input"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
+            disabled={isLoading || isError}
           />
         </div>
         
@@ -172,9 +179,20 @@ export const RepositoryBrowser = () => {
               <Loader2 className="h-6 w-6 animate-spin text-primary" />
               <span className="ml-2">Loading repositories...</span>
             </div>
-          ) : error ? (
-            <div className="p-6 text-center text-red-500">
-              Failed to load repositories. Please try again.
+          ) : isError ? (
+            <div className="p-6 text-center">
+              <AlertCircle className="h-10 w-10 text-red-500 mx-auto mb-3" />
+              <p className="text-red-500 font-medium">Failed to load repositories</p>
+              <p className="text-sm text-muted-foreground mt-1">
+                Please check your GitHub connection or try again later
+              </p>
+              <Button 
+                className="mt-4" 
+                variant="outline"
+                onClick={() => window.location.reload()}
+              >
+                Retry
+              </Button>
             </div>
           ) : filteredRepositories.length === 0 ? (
             <div className="p-6 text-center text-muted-foreground">

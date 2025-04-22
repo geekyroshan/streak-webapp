@@ -121,6 +121,40 @@
   .contribution-level-4 {
     @apply bg-contribution-level-4;
   }
+  
+  /* Fallback styles in case Tailwind classes aren't working */
+  .contribution-level-0:not(.bg-contribution-level-0) {
+    background-color: #161b22;
+  }
+  .contribution-level-1:not(.bg-contribution-level-1) {
+    background-color: #0e4429;
+  }
+  .contribution-level-2:not(.bg-contribution-level-2) {
+    background-color: #006d32;
+  }
+  .contribution-level-3:not(.bg-contribution-level-3) {
+    background-color: #26a641;
+  }
+  .contribution-level-4:not(.bg-contribution-level-4) {
+    background-color: #39d353;
+  }
+  
+  /* Add animation for level 4 contributions */
+  .animate-pulse-subtle {
+    animation: pulse-subtle 2s infinite;
+  }
+  
+  @keyframes pulse-subtle {
+    0% {
+      opacity: 1;
+    }
+    50% {
+      opacity: 0.7;
+    }
+    100% {
+      opacity: 1;
+    }
+  }
 }
 
 /* Glass Morphism Styles */

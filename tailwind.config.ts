@@ -94,12 +94,8 @@ export default {
 					}
 				},
 				'pulse-subtle': {
-					'0%, 100%': {
-						opacity: 1,
-					},
-					'50%': {
-						opacity: 0.8,
-					},
+					'0%, 100%': { opacity: '1' },
+					'50%': { opacity: '0.7' },
 				},
 				sparkle: {
 					'0%, 100%': { opacity: '0.2', transform: 'scale(0.8)' },
@@ -113,7 +109,7 @@ export default {
 			animation: {
 				'accordion-down': 'accordion-down 0.2s ease-out',
 				'accordion-up': 'accordion-up 0.2s ease-out',
-				'pulse-subtle': 'pulse-subtle 2s cubic-bezier(0.4, 0, 0.6, 1) infinite',
+				'pulse-subtle': 'pulse-subtle 2s infinite',
 				'sparkle': 'sparkle 1.5s ease-in-out infinite',
 				'float': 'float 3s ease-in-out infinite',
 			},
