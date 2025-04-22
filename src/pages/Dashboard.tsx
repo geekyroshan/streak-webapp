@@ -1,5 +1,4 @@
-
-import React from 'react';
+import React, { useEffect } from 'react';
 import { StreakStats } from '@/components/StreakStats';
 import { ContributionCalendar } from '@/components/ContributionCalendar';
 import { RepositoryBrowser } from '@/components/RepositoryBrowser';
@@ -8,15 +7,39 @@ import { WelcomeModal } from '@/components/WelcomeModal';
 import { BackdatingCard } from '@/components/BackdatingCard';
 import { Button } from '@/components/ui/button';
 import { ArrowRight } from 'lucide-react';
-import { Link } from 'react-router-dom';
+import { Link, useLocation } from 'react-router-dom';
+import { useAuth } from '@/lib/AuthContext';
 
 const Dashboard = () => {
+  const location = useLocation();
+  const { user } = useAuth();
+
+  // Check for token in URL
+  useEffect(() => {
+    const params = new URLSearchParams(location.search);
+    const token = params.get('token');
+    
+    if (token) {
+      // Store the token in localStorage
+      localStorage.setItem('token', token);
+      
+      // Clean up the URL by removing the token parameter
+      const newUrl = window.location.pathname;
+      window.history.replaceState({}, document.title, newUrl);
+      
+      // Reload the page to apply the token
+      window.location.reload();
+    }
+  }, [location]);
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-3xl font-bold tracking-tight">Dashboard</h1>
-          <p className="text-muted-foreground">Monitor and maintain your GitHub contribution streaks.</p>
+          <p className="text-muted-foreground">
+            Welcome back, {user?.name || 'Developer'}!
+          </p>
         </div>
         
         <div className="flex items-center gap-3">

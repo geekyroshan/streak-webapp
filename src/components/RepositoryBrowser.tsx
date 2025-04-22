@@ -1,11 +1,12 @@
-
 import React, { useState } from 'react';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { GlassCard, GlassCardHeader, GlassCardContent } from '@/components/ui/glass-card';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { GitFork, Search, Star } from 'lucide-react';
+import { GitFork, Search, Star, Loader2 } from 'lucide-react';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { useQuery } from '@tanstack/react-query';
+import { repoService } from '@/lib/api';
 
 interface RepositoryProps {
   name: string;
@@ -18,6 +19,27 @@ interface RepositoryProps {
   isSelected?: boolean;
   onSelect: () => void;
 }
+
+// Language color map
+const languageColors: Record<string, string> = {
+  TypeScript: '#3178c6',
+  JavaScript: '#f1e05a',
+  Python: '#3572A5',
+  Java: '#b07219',
+  Go: '#00ADD8',
+  Rust: '#dea584',
+  PHP: '#4F5D95',
+  CSS: '#563d7c',
+  HTML: '#e34c26',
+  Ruby: '#701516',
+  Swift: '#ffac45',
+  Kotlin: '#F18E33',
+  Dart: '#00B4AB',
+  'C#': '#178600',
+  C: '#555555',
+  'C++': '#f34b7d',
+  Shell: '#89e051',
+};
 
 const Repository = ({ 
   name, 
@@ -32,7 +54,7 @@ const Repository = ({
 }: RepositoryProps) => {
   return (
     <div 
-      className={`p-4 border-b border-border hover:bg-secondary/30 transition-colors cursor-pointer ${isSelected ? 'bg-secondary/50' : ''}`}
+      className={`p-4 border-b border-glass/10 hover:bg-white/5 transition-colors cursor-pointer backdrop-blur-sm ${isSelected ? 'bg-white/10' : ''}`}
       onClick={onSelect}
     >
       <div className="flex items-start justify-between mb-2">
@@ -40,6 +62,7 @@ const Repository = ({
         <Button 
           variant={isSelected ? "default" : "outline"} 
           size="sm"
+          className={isSelected ? "glass-button" : "bg-transparent"}
           onClick={(e) => {
             e.stopPropagation();
             onSelect();
@@ -69,7 +92,7 @@ const Repository = ({
           <span>{forks}</span>
         </div>
         
-        <span className="text-muted-foreground ml-auto">Updated {updatedAt}</span>
+        <span className="text-muted-foreground ml-auto">{updatedAt}</span>
       </div>
     </div>
   );
@@ -79,65 +102,25 @@ export const RepositoryBrowser = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedRepos, setSelectedRepos] = useState<string[]>([]);
   
-  // Sample repository data for demonstration
-  const repositories = [
-    {
-      name: 'personal-website',
-      description: 'My personal website built with React and Next.js',
-      stars: 12,
-      forks: 4,
-      language: 'TypeScript',
-      languageColor: '#3178c6',
-      updatedAt: '2 days ago'
-    },
-    {
-      name: 'api-service',
-      description: 'RESTful API service for data processing and analytics',
-      stars: 34,
-      forks: 11,
-      language: 'JavaScript',
-      languageColor: '#f1e05a',
-      updatedAt: '1 week ago'
-    },
-    {
-      name: 'machine-learning-experiments',
-      description: 'Collection of machine learning experiments and tutorials',
-      stars: 87,
-      forks: 29,
-      language: 'Python',
-      languageColor: '#3572A5',
-      updatedAt: '3 days ago'
-    },
-    {
-      name: 'design-system',
-      description: 'Reusable component library for web applications',
-      stars: 53,
-      forks: 17,
-      language: 'TypeScript',
-      languageColor: '#3178c6',
-      updatedAt: '4 days ago'
-    },
-    {
-      name: 'algorithms',
-      description: 'Implementation of common algorithms and data structures',
-      stars: 41,
-      forks: 12,
-      language: 'Java',
-      languageColor: '#b07219',
-      updatedAt: '2 weeks ago'
-    },
-    {
-      name: 'mobile-app',
-      description: 'Cross-platform mobile application using React Native',
-      stars: 29,
-      forks: 8,
-      language: 'JavaScript',
-      languageColor: '#f1e05a',
-      updatedAt: '5 days ago'
-    }
-  ];
+  // Fetch repositories from API
+  const { data: repositories, isLoading, error } = useQuery({
+    queryKey: ['repositories'],
+    queryFn: repoService.getUserRepositories,
+    staleTime: 5 * 60 * 1000, // 5 minutes
+  });
   
-  const filteredRepositories = repositories.filter(repo => 
+  // Format API repositories data
+  const formattedRepos = repositories?.map(repo => ({
+    name: repo.name,
+    description: repo.description,
+    stars: repo.stargazers_count,
+    forks: repo.forks_count,
+    language: repo.language || 'Unknown',
+    languageColor: languageColors[repo.language] || '#ccc',
+    updatedAt: new Date(repo.updated_at).toLocaleDateString()
+  })) || [];
+  
+  const filteredRepositories = formattedRepos.filter(repo => 
     repo.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
     (repo.description && repo.description.toLowerCase().includes(searchQuery.toLowerCase()))
   );
@@ -151,16 +134,18 @@ export const RepositoryBrowser = () => {
   };
   
   return (
-    <Card className="h-[450px] flex flex-col">
-      <CardHeader>
-        <CardTitle>Your Repositories</CardTitle>
-        <CardDescription>Select repositories to manage contributions</CardDescription>
+    <GlassCard className="h-[450px] flex flex-col">
+      <GlassCardHeader>
+        <div className="flex flex-col gap-2">
+          <h2 className="text-xl font-semibold tracking-tight">Your Repositories</h2>
+          <p className="text-sm text-muted-foreground">Select repositories to manage contributions</p>
+        </div>
         
         <div className="relative mt-2">
           <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
           <Input
             placeholder="Search repositories..."
-            className="pl-9"
+            className="pl-9 glass-input"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
           />
@@ -171,33 +156,44 @@ export const RepositoryBrowser = () => {
             <span className="text-xs text-muted-foreground">Selected:</span>
             <div className="flex flex-wrap gap-1">
               {selectedRepos.map(repo => (
-                <Badge key={repo} variant="secondary" className="text-xs">
+                <Badge key={repo} variant="secondary" className="text-xs bg-primary/20 hover:bg-primary/30">
                   {repo}
                 </Badge>
               ))}
             </div>
           </div>
         )}
-      </CardHeader>
+      </GlassCardHeader>
       
-      <CardContent className="flex-1 p-0 overflow-hidden">
+      <GlassCardContent className="flex-1 p-0 overflow-hidden">
         <ScrollArea className="h-full">
-          {filteredRepositories.map((repo, index) => (
-            <Repository
-              key={index}
-              {...repo}
-              isSelected={selectedRepos.includes(repo.name)}
-              onSelect={() => toggleRepoSelection(repo.name)}
-            />
-          ))}
-          
-          {filteredRepositories.length === 0 && (
-            <div className="p-6 text-center text-muted-foreground">
-              No repositories found matching '{searchQuery}'
+          {isLoading ? (
+            <div className="flex items-center justify-center h-full">
+              <Loader2 className="h-6 w-6 animate-spin text-primary" />
+              <span className="ml-2">Loading repositories...</span>
             </div>
+          ) : error ? (
+            <div className="p-6 text-center text-red-500">
+              Failed to load repositories. Please try again.
+            </div>
+          ) : filteredRepositories.length === 0 ? (
+            <div className="p-6 text-center text-muted-foreground">
+              {searchQuery 
+                ? `No repositories found matching '${searchQuery}'`
+                : 'No repositories found'}
+            </div>
+          ) : (
+            filteredRepositories.map((repo, index) => (
+              <Repository
+                key={index}
+                {...repo}
+                isSelected={selectedRepos.includes(repo.name)}
+                onSelect={() => toggleRepoSelection(repo.name)}
+              />
+            ))
           )}
         </ScrollArea>
-      </CardContent>
-    </Card>
+      </GlassCardContent>
+    </GlassCard>
   );
 };

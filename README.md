@@ -1,73 +1,64 @@
-# Welcome to your Lovable project
+# GitHub Streak Manager
 
-## Project info
+A modern web application that helps developers maintain their GitHub contribution streaks.
 
-**URL**: https://lovable.dev/projects/92298f41-1853-45f8-bf7a-64fc8e388336
+## Features
 
-## How can I edit this code?
+- 📊 **Contribution Calendar**: Visualize your GitHub contributions over the past year
+- 🔥 **Streak Statistics**: Track your current and longest GitHub contribution streaks
+- ⏱️ **Backdating Tool**: Fix missed days in your contribution history
+- 📱 **Responsive Design**: Beautiful modern UI that works on all devices
 
-There are several ways of editing your application.
+## Tech Stack
 
-**Use Lovable**
+- **Frontend**: React, TypeScript, Vite, Tailwind CSS, shadcn/ui
+- **Backend**: Node.js, Express, TypeScript
+- **Database**: MongoDB
+- **Authentication**: GitHub OAuth
 
-Simply visit the [Lovable Project](https://lovable.dev/projects/92298f41-1853-45f8-bf7a-64fc8e388336) and start prompting.
+## Getting Started
 
-Changes made via Lovable will be committed automatically to this repo.
+### Prerequisites
 
-**Use your preferred IDE**
+- Node.js 18+
+- MongoDB (local or Atlas connection)
+- GitHub OAuth App credentials
 
-If you want to work locally using your own IDE, you can clone this repo and push changes. Pushed changes will also be reflected in Lovable.
+### Installation
 
-The only requirement is having Node.js & npm installed - [install with nvm](https://github.com/nvm-sh/nvm#installing-and-updating)
+1. Clone the repository
+   ```bash
+   git clone https://github.com/yourusername/github-streak-manager.git
+   cd github-streak-manager
+   ```
 
-Follow these steps:
+2. Install dependencies
+   ```bash
+   npm run install:all
+   ```
 
-```sh
-# Step 1: Clone the repository using the project's Git URL.
-git clone <YOUR_GIT_URL>
+3. Set up environment variables
+   - Copy `.env.example` to `.env` in the root directory
+   - Copy `server/.env.example` to `server/.env`
+   - Update the environment variables with your MongoDB URI and GitHub OAuth credentials
 
-# Step 2: Navigate to the project directory.
-cd <YOUR_PROJECT_NAME>
+4. Run the development servers
+   ```bash
+   npm run dev:all
+   ```
 
-# Step 3: Install the necessary dependencies.
-npm i
+5. Open [http://localhost:8080](http://localhost:8080) in your browser
 
-# Step 4: Start the development server with auto-reloading and an instant preview.
-npm run dev
-```
+## Development
 
-**Edit a file directly in GitHub**
+- Frontend: `npm run dev`
+- Backend: `npm run server:dev`
+- Build: `npm run build`
 
-- Navigate to the desired file(s).
-- Click the "Edit" button (pencil icon) at the top right of the file view.
-- Make your changes and commit the changes.
+## Contributing
 
-**Use GitHub Codespaces**
+Contributions are welcome! Please feel free to submit a Pull Request.
 
-- Navigate to the main page of your repository.
-- Click on the "Code" button (green button) near the top right.
-- Select the "Codespaces" tab.
-- Click on "New codespace" to launch a new Codespace environment.
-- Edit files directly within the Codespace and commit and push your changes once you're done.
+## License
 
-## What technologies are used for this project?
-
-This project is built with:
-
-- Vite
-- TypeScript
-- React
-- shadcn-ui
-- Tailwind CSS
-
-## How can I deploy this project?
-
-Simply open [Lovable](https://lovable.dev/projects/92298f41-1853-45f8-bf7a-64fc8e388336) and click on Share -> Publish.
-
-## Can I connect a custom domain to my Lovable project?
-
-Yes it is!
-
-To connect a domain, navigate to Project > Settings > Domains and click Connect Domain.
-
-Read more here: [Setting up a custom domain](https://docs.lovable.dev/tips-tricks/custom-domain#step-by-step-guide)
+This project is licensed under the MIT License - see the LICENSE file for details.

@@ -1,4 +1,3 @@
-
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -92,6 +91,17 @@
 
   body {
     @apply bg-background text-foreground;
+    background-image: radial-gradient(
+      circle at top right,
+      hsl(var(--primary)/0.15),
+      transparent 35%
+    ),
+    radial-gradient(
+      circle at bottom left,
+      hsl(265 80% 50%/0.15),
+      transparent 35%
+    );
+    background-attachment: fixed;
   }
 }
 
@@ -110,5 +120,40 @@
   }
   .contribution-level-4 {
     @apply bg-contribution-level-4;
+  }
+}
+
+/* Glass Morphism Styles */
+@layer components {
+  .glass-card {
+    @apply backdrop-blur-glass bg-glass border border-glass/20 shadow-glass;
+  }
+  
+  .glass-card-opaque {
+    @apply backdrop-blur-glass bg-white/90 border border-glass/40 shadow-glass;
+  }
+  
+  .glass-card-dark {
+    @apply backdrop-blur-glass bg-gray-900/80 border border-glass/10 text-white shadow-glass;
+  }
+  
+  .glass-input {
+    @apply bg-white/10 backdrop-blur-glass border-glass/20 focus:border-primary/50 focus:ring-1 focus:ring-primary/50;
+  }
+  
+  .glass-button {
+    @apply bg-primary/80 backdrop-blur-sm hover:bg-primary/90 transition-all;
+  }
+  
+  .glass-calendar {
+    @apply rounded-xl backdrop-blur-glass bg-glass border border-glass/20 shadow-glass;
+  }
+  
+  .glass-calendar-day {
+    @apply hover:bg-white/10 rounded-md transition-colors;
+  }
+  
+  .glass-calendar-day-selected {
+    @apply bg-primary/30 hover:bg-primary/40 text-primary-foreground;
   }
 }
