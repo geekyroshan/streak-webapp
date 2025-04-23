@@ -46,6 +46,22 @@ export const repoService = {
   }
 };
 
+interface ScheduleBulkCommitPayload {
+  repositoryName: string;
+  owner: string;
+  startDate: string;
+  endDate: string;
+  timeRange: {
+    start: string;
+    end: string;
+  };
+  messageTemplate: string;
+  filesToChange: string[];
+  frequency: 'daily' | 'weekdays' | 'weekends' | 'custom';
+  customDays?: number[];
+  repositoryUrl?: string;
+}
+
 // Streak services
 export const streakService = {
   createBackdatedCommit: async (data: {
@@ -141,29 +157,59 @@ export const streakService = {
     }
   },
   
-  scheduleBulkCommits: async (data: {
-    repositoryName: string;
-    owner: string;
-    startDate: string;
-    endDate: string;
-    timeRange: { start: string; end: string };
-    messageTemplate: string;
-    filesToChange: string[];
-    frequency: 'daily' | 'weekdays' | 'weekends' | 'custom';
-    customDays?: number[];
-  }) => {
+  async scheduleBulkCommits({
+    repositoryName,
+    owner,
+    startDate,
+    endDate,
+    timeRange,
+    messageTemplate,
+    filesToChange,
+    frequency,
+    customDays,
+    repositoryUrl
+  }: ScheduleBulkCommitPayload): Promise<any> {
     try {
-      const response = await api.post('/streak/bulk', data);
-      return response.data;
-    } catch (error: any) {
-      if (error.response) {
-        const errorMessage = error.response.data?.message || 'Failed to schedule bulk commits';
+      console.log(`Scheduling bulk commits from ${startDate} to ${endDate}`);
+      
+      const response = await fetch(`${API_URL}/streak/schedule-bulk-commits`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${localStorage.getItem('streak_token')}`
+        },
+        body: JSON.stringify({
+          repository: {
+            name: repositoryName,
+            owner
+          },
+          dateRange: {
+            start: startDate,
+            end: endDate
+          },
+          timeRange,
+          messageTemplate,
+          filesToChange,
+          frequency,
+          customDays,
+          repositoryUrl
+        })
+      });
+      
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        const errorMessage = errorData.message || 'Failed to schedule bulk commits';
+        console.error('Error scheduling bulk commits:', errorMessage);
         throw new Error(errorMessage);
-      } else if (error.request) {
-        throw new Error('No response from server. Please check your network connection.');
-      } else {
-        throw new Error(`Error: ${error.message}`);
       }
+      
+      return await response.json();
+    } catch (error: any) {
+      console.error('Error in scheduleBulkCommits:', error);
+      if (error.message.includes('Failed to fetch')) {
+        throw new Error('Network error: Unable to connect to server');
+      }
+      throw error;
     }
   },
   
@@ -174,11 +220,35 @@ export const streakService = {
     time: string;
     message: string;
     filePath: string;
+    repository?: string;
+    repositoryUrl?: string;
+    commitMessage?: string;
+    dateTime?: string;
+    content?: string;
   }) => {
     try {
-      const response = await api.post('/streak/schedule-commit', data);
+      console.log('Scheduling commit for:', data.date, data.time);
+      
+      const formattedData = {
+        repository: data.repository || data.repositoryName,
+        repositoryUrl: data.repositoryUrl || `https://github.com/${data.owner}/${data.repositoryName}`,
+        filePath: data.filePath,
+        commitMessage: data.commitMessage || data.message,
+        dateTime: data.dateTime || `${data.date}T12:00:00Z`,
+        content: data.content || ''
+      };
+      
+      const requiredFields = ['repository', 'repositoryUrl', 'filePath', 'commitMessage', 'dateTime'];
+      const missingFields = requiredFields.filter(field => !formattedData[field as keyof typeof formattedData]);
+      
+      if (missingFields.length > 0) {
+        throw new Error(`Missing required fields: ${missingFields.join(', ')}`);
+      }
+      
+      const response = await api.post('/streak/schedule-commit', formattedData);
       return response.data;
     } catch (error: any) {
+      console.error('Error scheduling commit:', error);
       if (error.response) {
         const errorMessage = error.response.data?.message || 'Failed to schedule commit';
         throw new Error(errorMessage);
