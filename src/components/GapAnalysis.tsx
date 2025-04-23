@@ -1,197 +1,290 @@
-import React, { useEffect, useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { AlertTriangle, Calendar, Zap, Loader2 } from 'lucide-react';
-import { ScrollArea } from '@/components/ui/scroll-area';
-import { contributionService, streakService } from '@/lib/api';
 import { format, parseISO } from 'date-fns';
-
-interface MissedDayProps {
-  date: string;
-  dayName: string;
-  pattern?: string;
-  priority: 'high' | 'medium' | 'low';
-  onFix: () => void;
-  isFixing?: boolean;
-}
-
-const MissedDay = ({ date, dayName, pattern, priority, onFix, isFixing }: MissedDayProps) => {
-  const priorityColor = {
-    high: 'bg-red-500/10 border-red-500/20 text-red-500',
-    medium: 'bg-yellow-500/10 border-yellow-500/20 text-yellow-500',
-    low: 'bg-blue-500/10 border-blue-500/20 text-blue-500'
-  };
-  
-  return (
-    <div className={`p-3 rounded-md border mb-2 ${priorityColor[priority]}`}>
-      <div className="flex items-start justify-between mb-1">
-        <div>
-          <div className="text-sm font-medium">{date}</div>
-          <div className="text-xs opacity-80">{dayName}</div>
-        </div>
-        
-        <Button 
-          size="sm" 
-          variant="outline" 
-          className={priorityColor[priority]}
-          onClick={onFix}
-          disabled={isFixing}
-        >
-          {isFixing ? (
-            <>
-              <Loader2 className="h-3.5 w-3.5 mr-1 animate-spin" />
-              Fixing...
-            </>
-          ) : (
-            <>
-              <Zap className="h-3.5 w-3.5 mr-1" />
-              Fix
-            </>
-          )}
-        </Button>
-      </div>
-      
-      {pattern && (
-        <div className="text-xs mt-1 flex items-center">
-          <AlertTriangle className="h-3 w-3 mr-1" />
-          {pattern}
-        </div>
-      )}
-    </div>
-  );
-};
+import { Button } from '@/components/ui/button';
+import { Loader2, Calendar as CalendarIcon, ListFilter, LayoutGrid } from 'lucide-react';
+import { Badge } from '@/components/ui/badge';
+import { streakService, contributionService } from '@/lib/api';
+import { useToast } from '@/components/ui/use-toast';
+import { GapCalendarView } from './GapCalendarView';
+import { useGlobalMissedDays } from '@/lib/GlobalMissedDaysContext';
 
 export const GapAnalysis = () => {
-  const [loading, setLoading] = useState(true);
-  const [missedDays, setMissedDays] = useState<any[]>([]);
-  const [fixingDay, setFixingDay] = useState<string | null>(null);
-
-  // Fetch gaps in contribution history
-  useEffect(() => {
-    const fetchGaps = async () => {
-      try {
-        setLoading(true);
-        const data = await contributionService.getUserContributions();
-        const { analysis } = data;
-        
-        if (analysis && analysis.gaps && analysis.gaps.length > 0) {
-          // Process gaps to create missed days data
-          const formattedMissedDays = analysis.gaps.map((dateStr: string) => {
-            const date = parseISO(dateStr);
-            const dayOfWeek = date.getDay(); // 0 = Sunday, 6 = Saturday
-            const isWeekend = dayOfWeek === 0 || dayOfWeek === 6;
-            
-            // Calculate days ago for priority
-            const daysAgo = Math.ceil(Math.abs(new Date().getTime() - date.getTime()) / (1000 * 60 * 60 * 24));
-            
-            // Determine pattern if any
-            let pattern = undefined;
-            if (isWeekend) {
-              pattern = 'Weekend pattern detected';
-            }
-            
-            // Set priority based on how recent and weekday/weekend
-            let priority: 'high' | 'medium' | 'low' = 'medium';
-            if (daysAgo <= 7) {
-              priority = 'high';
-            } else if (isWeekend) {
-              priority = 'low';
-            }
-            
-            return {
-              id: dateStr,
-              date: format(date, 'MMMM d, yyyy'),
-              dayName: format(date, 'EEEE'),
-              pattern,
-              priority,
-              daysAgo
-            };
-          });
-          
-          // Sort by most recent first
-          formattedMissedDays.sort((a, b) => a.daysAgo - b.daysAgo);
-          
-          setMissedDays(formattedMissedDays);
-        }
-        
-        setLoading(false);
-      } catch (error) {
-        console.error('Failed to fetch gaps:', error);
-        setLoading(false);
-      }
-    };
-    
-    fetchGaps();
-  }, []);
-
+  const [loading, setLoading] = useState(false);
+  const [showCalendarView, setShowCalendarView] = useState(false);
+  const { toast } = useToast();
+  
+  // Use the global missed days context
+  const {
+    missedDays,
+    selectedRepo,
+    isFixingAny,
+    setIsFixingAny
+  } = useGlobalMissedDays();
+  
   // Function to fix a missed day
   const fixMissedDay = async (missedDay: any) => {
+    if (!selectedRepo) {
+      toast({
+        variant: "destructive",
+        title: "No repository selected",
+        description: "Please select a repository for backdating"
+      });
+      return;
+    }
+    
     try {
-      setFixingDay(missedDay.id);
+      setIsFixingAny(true);
       
       // Create a commit for this missed day
       await streakService.createBackdatedCommit({
-        repository: 'streak-backup-repo', // This should be configured by user
-        repositoryUrl: 'https://github.com/username/streak-backup-repo', // This should be user-configured
-        filePath: `streak-records/${missedDay.id}.md`,
+        repository: selectedRepo.name,
+        repositoryUrl: selectedRepo.html_url,
+        filePath: `streak-records/${missedDay.id}/README.md`,
         commitMessage: `Update streak record for ${missedDay.date}`,
         dateTime: missedDay.id + 'T12:00:00Z', // Set to noon on the missed day
-        content: `# Streak Record\n\nDate: ${missedDay.date}\nDay: ${missedDay.dayName}\n\nKeeping the streak alive! This is an automated backdated commit to maintain GitHub contribution streak.`
+        content: `# Streak Record\n\nDate: ${missedDay.date}\nDay: ${missedDay.dayOfWeek}\n\nKeeping the streak alive! This is an automated backdated commit to maintain GitHub contribution streak.`
       });
       
-      // Remove the fixed day from the list
-      setMissedDays(missedDays.filter(day => day.id !== missedDay.id));
+      toast({
+        title: "Success!",
+        description: `Fixed missed day for ${missedDay.date}`,
+      });
       
-      setFixingDay(null);
+      setIsFixingAny(false);
     } catch (error) {
       console.error('Failed to fix missed day:', error);
-      setFixingDay(null);
+      
+      // Extract more specific error message if available
+      let errorMessage = 'Failed to create backdated commit. Please try again.';
+      if (error.response?.data?.message) {
+        errorMessage = `Server error: ${error.response.data.message}`;
+      } else if (error.message) {
+        errorMessage = `Error: ${error.message}`;
+      }
+      
+      toast({
+        variant: "destructive",
+        title: "Failed to fix missed day",
+        description: errorMessage
+      });
+      
+      setIsFixingAny(false);
     }
   };
-
-  return (
-    <Card className="h-[450px] flex flex-col">
-      <CardHeader className="pb-3">
-        <div className="flex items-center justify-between">
-          <div>
-            <CardTitle>Missed Days</CardTitle>
-            <CardDescription>Gaps in your contribution timeline</CardDescription>
-          </div>
+  
+  // Function to fix multiple missed days
+  const fixMultipleMissedDays = async (selectedDates: string[]) => {
+    if (!selectedRepo || selectedDates.length === 0) {
+      toast({
+        variant: "destructive",
+        title: "No dates selected",
+        description: "Please select at least one date to fix"
+      });
+      return;
+    }
+    
+    setIsFixingAny(true);
+    
+    let successCount = 0;
+    let failedDates: string[] = [];
+    
+    try {
+      // Process each selected date
+      for (const dateStr of selectedDates) {
+        try {
+          const date = parseISO(dateStr);
+          const formattedDate = format(date, 'MMMM d, yyyy');
+          const dayOfWeek = format(date, 'EEEE');
           
-          <Button size="sm" variant="outline" className="gap-1">
-            <Calendar className="h-4 w-4" />
-            Calendar View
-          </Button>
+          await streakService.createBackdatedCommit({
+            repository: selectedRepo.name,
+            repositoryUrl: selectedRepo.html_url,
+            filePath: `streak-records/${dateStr}/README.md`,
+            commitMessage: `Update streak record for ${formattedDate}`,
+            dateTime: dateStr + 'T12:00:00Z', // Set to noon on the selected day
+            content: `# Streak Record\n\nDate: ${formattedDate}\nDay: ${dayOfWeek}\n\nKeeping the streak alive! This is an automated backdated commit to maintain GitHub contribution streak.`
+          });
+          
+          successCount++;
+          
+          // Short delay to avoid rate limiting
+          await new Promise(resolve => setTimeout(resolve, 500));
+        } catch (dayError) {
+          console.error(`Failed to process day ${dateStr}:`, dayError);
+          failedDates.push(dateStr);
+        }
+      }
+      
+      // Show success/error toast
+      if (failedDates.length === 0) {
+        toast({
+          title: "Success!",
+          description: `Fixed ${successCount} missed days`,
+        });
+      } else {
+        toast({
+          variant: "destructive",
+          title: `Fixed ${successCount} days, but ${failedDates.length} failed`,
+          description: "Some dates could not be processed. Try again later."
+        });
+      }
+      
+      setIsFixingAny(false);
+    } catch (error) {
+      console.error('Failed to fix multiple missed days:', error);
+      
+      toast({
+        variant: "destructive",
+        title: "Failed to fix missed days",
+        description: "An error occurred while processing your request"
+      });
+      
+      setIsFixingAny(false);
+    }
+  };
+  
+  // Handle date selection from calendar
+  const handleDateSelect = async (dateStr: string) => {
+    if (!selectedRepo) {
+      toast({
+        variant: "destructive",
+        title: "No repository selected",
+        description: "Please select a repository for backdating"
+      });
+      return;
+    }
+    
+    const missedDay = missedDays.find(day => day.id === dateStr);
+    
+    if (missedDay) {
+      await fixMissedDay(missedDay);
+    } else {
+      // Create a missed day object for this date
+      const date = parseISO(dateStr);
+      const formattedDate = format(date, 'MMMM d, yyyy');
+      const dayOfWeek = format(date, 'EEEE');
+      const daysAgo = Math.ceil(Math.abs(new Date().getTime() - date.getTime()) / (1000 * 60 * 60 * 24));
+      
+      await fixMissedDay({
+        id: dateStr,
+        date: formattedDate,
+        dayOfWeek,
+        daysAgo,
+        priority: 'medium',
+        isWeekend: [0, 6].includes(date.getDay())
+      });
+    }
+  };
+  
+  // Toggle between calendar and list views
+  const toggleView = () => {
+    setShowCalendarView(!showCalendarView);
+  };
+  
+  // Return component
+  return (
+    <Card className="shadow-lg bg-card/50 backdrop-blur-lg border-input/10">
+      <CardHeader className="pb-2">
+        <div>
+          <CardTitle>Contribution Gaps</CardTitle>
+          <CardDescription>Identify and fix gaps in your contribution streak</CardDescription>
         </div>
       </CardHeader>
-      
-      <CardContent className="flex-1 overflow-hidden">
+      <CardContent>
         {loading ? (
-          <div className="flex items-center justify-center h-full">
-            <Loader2 className="h-6 w-6 animate-spin text-primary" />
-            <span className="ml-2">Analyzing contribution patterns...</span>
+          <div className="flex justify-center items-center py-8">
+            <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
           </div>
-        ) : missedDays.length === 0 ? (
-          <div className="flex flex-col items-center justify-center h-full text-center p-6">
-            <div className="w-12 h-12 rounded-full bg-green-500/10 flex items-center justify-center mb-3">
-              <Calendar className="h-6 w-6 text-green-500" />
-            </div>
-            <h3 className="text-lg font-medium mb-1">No Gaps Found!</h3>
-            <p className="text-sm text-muted-foreground">
-              Your contribution timeline looks perfect. Great job maintaining your streak!
-            </p>
-          </div>
+        ) : showCalendarView ? (
+          // Show the calendar view
+          <GapCalendarView 
+            missedDays={missedDays} 
+            onDateSelect={handleDateSelect}
+            onBackClick={() => setShowCalendarView(false)}
+            onFixDay={fixMissedDay}
+            onFixAll={fixMultipleMissedDays}
+            isFixing={isFixingAny}
+          />
         ) : (
-          <ScrollArea className="h-[320px] pr-4">
-            {missedDays.map((day, index) => (
-              <MissedDay 
-                key={index} 
-                {...day} 
-                onFix={() => fixMissedDay(day)}
-                isFixing={fixingDay === day.id}
-              />
-            ))}
-          </ScrollArea>
+          // Show the list view
+          <div className="space-y-3">
+            {missedDays.length > 0 ? (
+              <div>
+                <div className="flex flex-col gap-2 mt-2">
+                  {missedDays.slice(0, 10).map((day) => (
+                    <div 
+                      key={day.id} 
+                      className="flex justify-between items-center p-2 rounded-md bg-card/30 hover:bg-card/50 transition-colors"
+                    >
+                      <div className="flex flex-col">
+                        <div className="flex items-center gap-2">
+                          <span className="text-sm font-medium">{day.date}</span>
+                          <Badge 
+                            variant={
+                              day.priority === 'high' ? 'destructive' : 
+                              day.priority === 'medium' ? 'default' : 'outline'
+                            }
+                            className="text-xs h-5"
+                          >
+                            {day.daysAgo} {day.daysAgo === 1 ? 'day' : 'days'} ago
+                          </Badge>
+                          {day.isWeekend && (
+                            <Badge variant="outline" className="text-xs h-5 border-yellow-600/30 text-yellow-500">
+                              Weekend
+                            </Badge>
+                          )}
+                        </div>
+                        <span className="text-xs text-muted-foreground">{day.dayOfWeek}</span>
+                      </div>
+                      <Button 
+                        size="sm" 
+                        variant="outline"
+                        disabled={isFixingAny}
+                        onClick={() => fixMissedDay(day)}
+                        className="h-8 text-xs bg-primary/10 hover:bg-primary/20"
+                      >
+                        {isFixingAny ? (
+                          <Loader2 className="h-3 w-3 animate-spin" />
+                        ) : (
+                          'Fix'
+                        )}
+                      </Button>
+                    </div>
+                  ))}
+                </div>
+                {missedDays.length > 10 && (
+                  <div className="mt-3 text-center text-sm text-muted-foreground">
+                    <span>+ {missedDays.length - 10} more gaps found. </span>
+                    <Button 
+                      variant="link" 
+                      className="h-auto p-0 text-sm" 
+                      onClick={toggleView}
+                    >
+                      View in calendar
+                    </Button>
+                  </div>
+                )}
+              </div>
+            ) : (
+              <div className="py-8 text-center">
+                <CalendarIcon className="h-12 w-12 text-muted-foreground/50 mx-auto mb-3" />
+                <h3 className="text-lg font-medium mb-1">No gaps detected</h3>
+                <p className="text-sm text-muted-foreground max-w-sm mx-auto">
+                  Great job! Your GitHub contribution streak looks consistent.
+                  If you know of specific dates you missed, use the calendar view to fix them.
+                </p>
+                <Button 
+                  variant="outline" 
+                  className="mt-4" 
+                  onClick={toggleView}
+                >
+                  <LayoutGrid className="h-4 w-4 mr-2" />
+                  View Calendar
+                </Button>
+              </div>
+            )}
+          </div>
         )}
       </CardContent>
     </Card>
