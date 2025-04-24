@@ -529,6 +529,479 @@ export class GitHubService {
       throw new AppError(`GitHub commit error: ${error.message}`, 500);
     }
   }
+
+  /**
+   * Get user's activity streams (commits, PRs, issues, reviews, stars)
+   * Combines data from different GitHub API endpoints
+   */
+  async getActivities(type?: string, repo?: string, skip: number = 0, limit: number = 20) {
+    try {
+      const activities: any[] = [];
+      
+      // Get different types of activities based on the filter
+      if (!type || type === 'commit') {
+        const commits = await this.getCommitActivity(repo);
+        activities.push(...commits.map(commit => ({
+          id: commit.sha || commit.id,
+          type: 'commit',
+          title: commit.commit?.message || 'Commit',
+          repo: commit.repository?.name || repo || '',
+          repoFullName: commit.repository?.full_name || '',
+          timestamp: commit.commit?.author?.date || commit.created_at,
+          branch: commit.branch || 'main',
+          url: commit.html_url
+        })));
+      }
+      
+      if (!type || type === 'pr') {
+        const prs = await this.getPullRequestActivity(repo);
+        activities.push(...prs.map(pr => ({
+          id: `pr-${pr.id}`,
+          type: 'pr',
+          title: pr.title || 'Pull Request',
+          repo: pr.head?.repo?.name || repo || '',
+          repoFullName: pr.head?.repo?.full_name || '',
+          timestamp: pr.created_at,
+          url: pr.html_url
+        })));
+      }
+      
+      if (!type || type === 'issue') {
+        const issues = await this.getIssueActivity(repo);
+        activities.push(...issues.map(issue => ({
+          id: `issue-${issue.id}`,
+          type: 'issue',
+          title: issue.title || 'Issue',
+          repo: issue.repository?.name || repo || '',
+          repoFullName: issue.repository_url?.split('/').slice(-2).join('/') || '',
+          timestamp: issue.created_at,
+          url: issue.html_url
+        })));
+      }
+      
+      if (!type || type === 'review') {
+        const reviews = await this.getReviewActivity(repo);
+        activities.push(...reviews.map(review => ({
+          id: `review-${review.id}`,
+          type: 'review',
+          title: `Code review: ${review.pull_request?.title || ''}`,
+          repo: review.repository?.name || repo || '',
+          repoFullName: review.repository_url?.split('/').slice(-2).join('/') || '',
+          timestamp: review.submitted_at || review.created_at,
+          url: review.html_url || review.pull_request?.html_url
+        })));
+      }
+      
+      if (!type || type === 'star') {
+        const stars = await this.getStarredActivity(repo);
+        activities.push(...stars.map(star => ({
+          id: `star-${star.repo?.id || Math.random().toString(36).substring(2, 9)}`,
+          type: 'star',
+          title: `Starred repository ${star.repo?.name || star.full_name || ''}`,
+          repo: star.repo?.name || star.name || '',
+          repoFullName: star.repo?.full_name || star.full_name || '',
+          timestamp: star.created_at,
+          url: star.repo?.html_url || star.html_url
+        })));
+      }
+      
+      // Sort by timestamp (newest first)
+      activities.sort((a, b) => 
+        new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()
+      );
+      
+      // Apply pagination
+      return activities.slice(skip, skip + limit);
+    } catch (error: any) {
+      throw new AppError(
+        error.response?.data?.message || 'Failed to fetch activities',
+        error.response?.status || 500
+      );
+    }
+  }
+  
+  /**
+   * Get commit activity
+   */
+  private async getCommitActivity(repo?: string) {
+    try {
+      let commits: any[] = [];
+      
+      if (repo) {
+        // Get commits for a specific repository
+        const repoOwner = repo.includes('/') ? repo.split('/')[0] : '';
+        const repoName = repo.includes('/') ? repo.split('/')[1] : repo;
+        
+        const response = await axios.get(
+          `${githubConfig.apiUrl}/repos/${repoOwner}/${repoName}/commits?author=${await this.getAuthenticatedUsername()}`,
+          {
+            headers: {
+              Authorization: `token ${this.token}`
+            }
+          }
+        );
+        commits = response.data;
+      } else {
+        // Get commit events across all repositories
+        const events = await this.getUserEvents('PushEvent');
+        commits = events
+          .filter((event: any) => event.type === 'PushEvent')
+          .flatMap((event: any) => event.payload.commits.map((commit: any) => ({
+            ...commit,
+            repository: {
+              name: event.repo.name.split('/')[1],
+              full_name: event.repo.name
+            },
+            created_at: event.created_at,
+            html_url: `https://github.com/${event.repo.name}/commit/${commit.sha}`
+          })));
+      }
+      
+      return commits;
+    } catch (error: any) {
+      throw new AppError(
+        error.response?.data?.message || 'Failed to fetch commit activity',
+        error.response?.status || 500
+      );
+    }
+  }
+  
+  /**
+   * Get pull request activity
+   */
+  private async getPullRequestActivity(repo?: string) {
+    try {
+      let prs: any[] = [];
+      
+      if (repo) {
+        // Get PRs for a specific repository
+        const repoOwner = repo.includes('/') ? repo.split('/')[0] : '';
+        const repoName = repo.includes('/') ? repo.split('/')[1] : repo;
+        
+        const response = await axios.get(
+          `${githubConfig.apiUrl}/repos/${repoOwner}/${repoName}/pulls?state=all&creator=${await this.getAuthenticatedUsername()}`,
+          {
+            headers: {
+              Authorization: `token ${this.token}`
+            }
+          }
+        );
+        prs = response.data;
+      } else {
+        // Get PR events across all repositories
+        const events = await this.getUserEvents('PullRequestEvent');
+        prs = events
+          .filter((event: any) => 
+            event.type === 'PullRequestEvent' && 
+            event.payload.action === 'opened'
+          )
+          .map((event: any) => ({
+            id: event.payload.pull_request.id,
+            title: event.payload.pull_request.title,
+            created_at: event.created_at,
+            html_url: event.payload.pull_request.html_url,
+            head: {
+              repo: {
+                name: event.repo.name.split('/')[1],
+                full_name: event.repo.name
+              }
+            }
+          }));
+      }
+      
+      return prs;
+    } catch (error: any) {
+      throw new AppError(
+        error.response?.data?.message || 'Failed to fetch pull request activity',
+        error.response?.status || 500
+      );
+    }
+  }
+  
+  /**
+   * Get issue activity
+   */
+  private async getIssueActivity(repo?: string) {
+    try {
+      let issues: any[] = [];
+      
+      if (repo) {
+        // Get issues for a specific repository
+        const repoOwner = repo.includes('/') ? repo.split('/')[0] : '';
+        const repoName = repo.includes('/') ? repo.split('/')[1] : repo;
+        
+        const response = await axios.get(
+          `${githubConfig.apiUrl}/repos/${repoOwner}/${repoName}/issues?state=all&creator=${await this.getAuthenticatedUsername()}`,
+          {
+            headers: {
+              Authorization: `token ${this.token}`
+            }
+          }
+        );
+        issues = response.data.filter((issue: any) => !issue.pull_request); // Filter out PRs
+      } else {
+        // Get issue events across all repositories
+        const events = await this.getUserEvents('IssuesEvent');
+        issues = events
+          .filter((event: any) => 
+            event.type === 'IssuesEvent' && 
+            event.payload.action === 'opened'
+          )
+          .map((event: any) => ({
+            id: event.payload.issue.id,
+            title: event.payload.issue.title,
+            created_at: event.created_at,
+            html_url: event.payload.issue.html_url,
+            repository: {
+              name: event.repo.name.split('/')[1]
+            },
+            repository_url: `https://api.github.com/repos/${event.repo.name}`
+          }));
+      }
+      
+      return issues;
+    } catch (error: any) {
+      throw new AppError(
+        error.response?.data?.message || 'Failed to fetch issue activity',
+        error.response?.status || 500
+      );
+    }
+  }
+  
+  /**
+   * Get review activity
+   */
+  private async getReviewActivity(repo?: string) {
+    try {
+      // GitHub doesn't have a direct API for fetching all reviews
+      // We need to use events and then fetch details
+      const events = await this.getUserEvents('PullRequestReviewEvent');
+      const reviews = events
+        .filter((event: any) => event.type === 'PullRequestReviewEvent')
+        .map((event: any) => ({
+          id: `${event.id}-review`,
+          created_at: event.created_at,
+          submitted_at: event.payload.review.submitted_at,
+          pull_request: {
+            title: event.payload.pull_request.title,
+            html_url: event.payload.pull_request.html_url
+          },
+          html_url: event.payload.review.html_url,
+          repository: {
+            name: event.repo.name.split('/')[1]
+          },
+          repository_url: `https://api.github.com/repos/${event.repo.name}`
+        }));
+      
+      // Filter by repo if specified
+      if (repo) {
+        return reviews.filter((review: {repository: {name: string}}) => 
+          review.repository.name.toLowerCase() === repo.toLowerCase()
+        );
+      }
+      
+      return reviews;
+    } catch (error: any) {
+      throw new AppError(
+        error.response?.data?.message || 'Failed to fetch review activity',
+        error.response?.status || 500
+      );
+    }
+  }
+  
+  /**
+   * Get starred repositories activity
+   */
+  private async getStarredActivity(repo?: string) {
+    try {
+      // GitHub API doesn't provide a way to get when a user starred a repo
+      // We can only get the list of currently starred repos
+      const response = await axios.get(
+        `${githubConfig.apiUrl}/user/starred?per_page=100`, 
+        {
+          headers: {
+            Authorization: `token ${this.token}`,
+            Accept: 'application/vnd.github.v3.star+json' // This header is needed to get starred_at
+          }
+        }
+      );
+      
+      const stars = response.data.map((starredRepo: {
+        repo?: {
+          name?: string;
+          full_name?: string;
+          html_url?: string;
+        };
+        starred_at?: string;
+        name?: string;
+        full_name?: string;
+        html_url?: string;
+      }) => ({
+        repo: starredRepo.repo || starredRepo,
+        created_at: starredRepo.starred_at || new Date().toISOString(),
+        name: starredRepo.repo?.name || starredRepo.name,
+        full_name: starredRepo.repo?.full_name || starredRepo.full_name,
+        html_url: starredRepo.repo?.html_url || starredRepo.html_url
+      }));
+      
+      // Filter by repo if specified
+      if (repo) {
+        return stars.filter((star: {name?: string; repo?: {name?: string}}) => 
+          star.name?.toLowerCase() === repo.toLowerCase() ||
+          star.repo?.name?.toLowerCase() === repo.toLowerCase()
+        );
+      }
+      
+      return stars;
+    } catch (error: any) {
+      throw new AppError(
+        error.response?.data?.message || 'Failed to fetch starred activity',
+        error.response?.status || 500
+      );
+    }
+  }
+  
+  /**
+   * Get user events from GitHub
+   */
+  private async getUserEvents(type?: string) {
+    try {
+      const username = await this.getAuthenticatedUsername();
+      const response = await axios.get(
+        `${githubConfig.apiUrl}/users/${username}/events?per_page=100`,
+        {
+          headers: {
+            Authorization: `token ${this.token}`
+          }
+        }
+      );
+      
+      if (type) {
+        return response.data.filter((event: any) => event.type === type);
+      }
+      
+      return response.data;
+    } catch (error: any) {
+      throw new AppError(
+        error.response?.data?.message || 'Failed to fetch user events',
+        error.response?.status || 500
+      );
+    }
+  }
+  
+  /**
+   * Get authenticated username
+   */
+  private async getAuthenticatedUsername() {
+    const user = await this.getUserProfile();
+    return user.login;
+  }
+  
+  /**
+   * Get contribution count
+   */
+  async getContributionCount() {
+    try {
+      const username = await this.getAuthenticatedUsername();
+      const contributionCalendar = await this.getContributionCalendar(username);
+      
+      return {
+        totalContributions: contributionCalendar.totalContributions || 0
+      };
+    } catch (error: any) {
+      throw new AppError(
+        error.response?.data?.message || 'Failed to fetch contribution count',
+        error.response?.status || 500
+      );
+    }
+  }
+  
+  /**
+   * Get stars received count
+   */
+  async getStarsReceived() {
+    try {
+      const username = await this.getAuthenticatedUsername();
+      let totalStars = 0;
+      
+      // Get user's repositories
+      const repos = await this.getRepositories();
+      
+      // Sum up stars from all repos
+      repos.forEach((repo: any) => {
+        totalStars += repo.stargazers_count || 0;
+      });
+      
+      return totalStars;
+    } catch (error: any) {
+      throw new AppError(
+        error.response?.data?.message || 'Failed to fetch stars received',
+        error.response?.status || 500
+      );
+    }
+  }
+  
+  /**
+   * Get contribution statistics
+   */
+  async getContributionStats(since?: string) {
+    try {
+      const username = await this.getAuthenticatedUsername();
+      
+      // Get contribution calendar for day of week data
+      const contributionCalendar = await this.getContributionCalendar(username);
+      
+      // Calculate day of week activity
+      const dayOfWeekActivity = [0, 0, 0, 0, 0, 0, 0]; // Sun to Sat
+      
+      if (contributionCalendar && contributionCalendar.weeks) {
+        contributionCalendar.weeks.forEach((week: any) => {
+          if (week.contributionDays) {
+            week.contributionDays.forEach((day: any) => {
+              const date = new Date(day.date);
+              const dayOfWeek = date.getUTCDay(); // 0 is Sunday, 6 is Saturday
+              dayOfWeekActivity[dayOfWeek] += day.contributionCount;
+            });
+          }
+        });
+      }
+      
+      // Get different types of contributions
+      const events = await this.getUserEvents();
+      
+      // Count different event types
+      const commitEvents = events.filter((event: any) => event.type === 'PushEvent').length;
+      const pullRequestEvents = events.filter((event: any) => 
+        event.type === 'PullRequestEvent' && 
+        event.payload.action === 'opened'
+      ).length;
+      const issueEvents = events.filter((event: any) => 
+        event.type === 'IssuesEvent' && 
+        event.payload.action === 'opened'
+      ).length;
+      const reviewEvents = events.filter((event: any) => 
+        event.type === 'PullRequestReviewEvent'
+      ).length;
+      
+      // Get stars given
+      const starsGiven = await this.getStarredActivity();
+      
+      return {
+        commits: commitEvents,
+        pullRequests: pullRequestEvents,
+        issues: issueEvents,
+        reviews: reviewEvents,
+        starsGiven: starsGiven.length,
+        totalContributions: contributionCalendar.totalContributions || 0,
+        dayOfWeekActivity
+      };
+    } catch (error: any) {
+      throw new AppError(
+        error.response?.data?.message || 'Failed to fetch contribution statistics',
+        error.response?.status || 500
+      );
+    }
+  }
 }
 
 /**

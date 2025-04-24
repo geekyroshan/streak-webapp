@@ -129,6 +129,8 @@ const StreakPage = () => {
   const [messageTemplate, setMessageTemplate] = useState('Update documentation');
   const [timeSelectionMode, setTimeSelectionMode] = useState<'single' | 'multiple'>('single');
   const [selectedTimes, setSelectedTimes] = useState<string[]>([]);
+  // Add state for cleaning up commits
+  const [isCleaningUp, setIsCleaningUp] = useState(false);
   
   const { repositories, isLoading: isLoadingRepos, error: repoError } = useRepositories();
   const { 
@@ -143,6 +145,30 @@ const StreakPage = () => {
   
   const formattedDate = selectedDate ? format(selectedDate, 'MMMM d, yyyy') : '';
   const daysSince = selectedDate ? Math.floor((new Date().getTime() - selectedDate.getTime()) / (1000 * 60 * 60 * 24)) : 0;
+  
+  // Handle cleaning up all pending commits
+  const handleCleanupPendingCommits = async () => {
+    if (window.confirm('Are you sure you want to clean up all pending commits? This action cannot be undone.')) {
+      setIsCleaningUp(true);
+      try {
+        const result = await streakService.cleanupPendingCommits();
+        toast({
+          title: "Cleanup successful",
+          description: `Cleaned up ${result.data.commitsDeleted} pending commits and cancelled ${result.data.bulkSchedulesCancelled} bulk schedules.`,
+        });
+        // Refresh the history after cleanup
+        refetchHistory();
+      } catch (error: any) {
+        toast({
+          title: "Cleanup failed",
+          description: error.message || "An unexpected error occurred during cleanup",
+          variant: "destructive"
+        });
+      } finally {
+        setIsCleaningUp(false);
+      }
+    }
+  };
   
   // Reset form function
   const handleReset = () => {
@@ -1004,7 +1030,29 @@ const StreakPage = () => {
               </div>
               
               <div className="border-t pt-6">
-                <h3 className="font-medium mb-4">Scheduled Commits</h3>
+                <div className="flex justify-between items-center mb-4">
+                  <h3 className="font-medium">Scheduled Commits</h3>
+                  <Button 
+                    variant="outline" 
+                    size="sm" 
+                    className="gap-2"
+                    onClick={handleCleanupPendingCommits}
+                    disabled={isCleaningUp || isLoadingHistory}
+                  >
+                    {isCleaningUp ? (
+                      <>
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                        Cleaning...
+                      </>
+                    ) : (
+                      <>
+                        <Trash className="h-4 w-4" />
+                        Clean All Pending
+                      </>
+                    )}
+                  </Button>
+                </div>
+                
                 {isLoadingHistory ? (
                   <div className="flex justify-center py-4">
                     <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />

@@ -26,6 +26,11 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { repoService } from '@/lib/api';
 import { format, parseISO, formatDistanceToNow } from 'date-fns';
+import RepositoryStats from '@/components/RepositoryStats';
+
+// Sort types
+type SortOption = 'updated' | 'name' | 'stars' | 'forks';
+type FilterOption = 'all' | 'sources' | 'forks' | 'archived' | 'mirrors';
 
 interface Repository {
   id: number;
@@ -43,6 +48,9 @@ interface Repository {
     login: string;
     avatarUrl: string;
   };
+  isFork?: boolean;
+  isArchived?: boolean;
+  isMirror?: boolean;
 }
 
 interface RepositoryCardProps extends Repository {
@@ -183,10 +191,12 @@ const RepositoryCard = ({
 
 const RepositoriesPage = () => {
   const [searchQuery, setSearchQuery] = useState('');
-  const [selectedRepos, setSelectedRepos] = useState<string[]>([]);
+  const [selectedRepo, setSelectedRepo] = useState<string | null>(null);
   const [repositories, setRepositories] = useState<Repository[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [sortBy, setSortBy] = useState<SortOption>('updated');
+  const [filterBy, setFilterBy] = useState<FilterOption>('all');
   
   useEffect(() => {
     const fetchRepositories = async () => {
@@ -209,6 +219,9 @@ const RepositoriesPage = () => {
             activityLevel,
             lastCommit: formatLastCommit(repo.pushed_at || repo.updated_at),
             htmlUrl: repo.html_url,
+            isFork: repo.fork || false,
+            isArchived: repo.archived || false,
+            isMirror: repo.mirror_url ? true : false,
             owner: {
               login: repo.owner?.login || '',
               avatarUrl: repo.owner?.avatar_url || ''
@@ -219,8 +232,8 @@ const RepositoriesPage = () => {
         setRepositories(formattedRepos);
         
         // Select the first repository if none are selected
-        if (selectedRepos.length === 0 && formattedRepos.length > 0) {
-          setSelectedRepos([formattedRepos[0].name]);
+        if (!selectedRepo && formattedRepos.length > 0) {
+          setSelectedRepo(formattedRepos[0].name);
         }
         
         setLoading(false);
@@ -234,18 +247,39 @@ const RepositoriesPage = () => {
     fetchRepositories();
   }, []);
 
-  
-  const filteredRepositories = repositories.filter(repo => 
+  // Filter repos based on search query and filter selection
+  const filteredRepositories = repositories
+    .filter(repo => {
+      // Apply filter
+      if (filterBy === 'all') return true;
+      if (filterBy === 'sources') return !repo.isFork;
+      if (filterBy === 'forks') return repo.isFork;
+      if (filterBy === 'archived') return repo.isArchived;
+      if (filterBy === 'mirrors') return repo.isMirror;
+      return true;
+    })
+    .filter(repo => 
     repo.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
     (repo.description && repo.description.toLowerCase().includes(searchQuery.toLowerCase()))
   );
   
-  const toggleRepoSelection = (repoName: string) => {
-    setSelectedRepos(prev => 
-      prev.includes(repoName) 
-        ? prev.filter(name => name !== repoName)
-        : [...prev, repoName]
-    );
+  // Sort repositories
+  const sortedRepositories = [...filteredRepositories].sort((a, b) => {
+    if (sortBy === 'name') {
+      return a.name.localeCompare(b.name);
+    } else if (sortBy === 'stars') {
+      return b.stars - a.stars;
+    } else if (sortBy === 'forks') {
+      return b.forks - a.forks;
+    } else {
+      // Sort by updated date by default
+      return new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime();
+    }
+  });
+  
+  // Toggle repository selection to only select one at a time
+  const handleRepoSelection = (repoName: string) => {
+    setSelectedRepo(repoName);
   };
   
   return (
@@ -277,15 +311,28 @@ const RepositoriesPage = () => {
           <DropdownMenuTrigger asChild>
             <Button variant="outline" className="gap-2">
               <Filter className="h-4 w-4" />
-              Filter
+              {filterBy === 'all' ? 'All Repositories' : 
+               filterBy === 'sources' ? 'Sources' : 
+               filterBy === 'forks' ? 'Forks' : 
+               filterBy === 'archived' ? 'Archived' : 'Mirrors'}
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end">
-            <DropdownMenuItem>All repositories</DropdownMenuItem>
-            <DropdownMenuItem>Sources</DropdownMenuItem>
-            <DropdownMenuItem>Forks</DropdownMenuItem>
-            <DropdownMenuItem>Archived</DropdownMenuItem>
-            <DropdownMenuItem>Mirrors</DropdownMenuItem>
+            <DropdownMenuItem onClick={() => setFilterBy('all')}>
+              All repositories
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={() => setFilterBy('sources')}>
+              Sources
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={() => setFilterBy('forks')}>
+              Forks
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={() => setFilterBy('archived')}>
+              Archived
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={() => setFilterBy('mirrors')}>
+              Mirrors
+            </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
         
@@ -293,14 +340,24 @@ const RepositoriesPage = () => {
           <DropdownMenuTrigger asChild>
             <Button variant="outline" className="gap-2">
               <ArrowUpDown className="h-4 w-4" />
-              Sort
+              {sortBy === 'updated' ? 'Recently updated' : 
+               sortBy === 'name' ? 'Name' : 
+               sortBy === 'stars' ? 'Stars' : 'Forks'}
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end">
-            <DropdownMenuItem>Recently updated</DropdownMenuItem>
-            <DropdownMenuItem>Name</DropdownMenuItem>
-            <DropdownMenuItem>Stars</DropdownMenuItem>
-            <DropdownMenuItem>Forks</DropdownMenuItem>
+            <DropdownMenuItem onClick={() => setSortBy('updated')}>
+              Recently updated
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={() => setSortBy('name')}>
+              Name
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={() => setSortBy('stars')}>
+              Stars
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={() => setSortBy('forks')}>
+              Forks
+            </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
       </div>
@@ -349,77 +406,77 @@ const RepositoriesPage = () => {
           </div>
         ) : (
           <>
-            <TabsContent value="grid" className="mt-0">
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                {filteredRepositories.map((repo) => (
-                  <RepositoryCard
+        <TabsContent value="grid" className="mt-0">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                {sortedRepositories.map((repo) => (
+              <RepositoryCard
                     key={repo.id}
-                    {...repo}
-                    isSelected={selectedRepos.includes(repo.name)}
-                    onToggleSelect={() => toggleRepoSelection(repo.name)}
-                  />
-                ))}
-                
-                {filteredRepositories.length === 0 && !loading && (
-                  <div className="col-span-full p-8 text-center text-muted-foreground border rounded-md">
-                    No repositories found matching '{searchQuery}'
-                  </div>
-                )}
-              </div>
-            </TabsContent>
+                {...repo}
+                    isSelected={selectedRepo === repo.name}
+                    onToggleSelect={() => handleRepoSelection(repo.name)}
+              />
+            ))}
             
-            <TabsContent value="list" className="mt-0">
-              <div className="space-y-2">
-                {filteredRepositories.map((repo) => (
+                {sortedRepositories.length === 0 && !loading && (
+              <div className="col-span-full p-8 text-center text-muted-foreground border rounded-md">
+                No repositories found matching '{searchQuery}'
+              </div>
+            )}
+          </div>
+        </TabsContent>
+        
+        <TabsContent value="list" className="mt-0">
+          <div className="space-y-2">
+                {sortedRepositories.map((repo) => (
                   <div key={repo.id} className="flex items-center justify-between p-4 border rounded-md">
-                    <div className="flex-1">
-                      <div className="font-medium">{repo.name}</div>
-                      <div className="text-sm text-muted-foreground line-clamp-1">{repo.description}</div>
+                <div className="flex-1">
+                  <div className="font-medium">{repo.name}</div>
+                  <div className="text-sm text-muted-foreground line-clamp-1">{repo.description}</div>
+                </div>
+                
+                <div className="flex items-center gap-4">
+                  <div className="text-sm hidden md:flex items-center gap-1.5">
+                    <div className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: repo.languageColor }} />
+                    <span>{repo.language}</span>
+                  </div>
+                  
+                  <div className="flex items-center gap-4">
+                    <div className="flex items-center gap-1">
+                      <Star className="w-4 h-4" />
+                      <span>{repo.stars}</span>
                     </div>
                     
-                    <div className="flex items-center gap-4">
-                      <div className="text-sm hidden md:flex items-center gap-1.5">
-                        <div className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: repo.languageColor }} />
-                        <span>{repo.language}</span>
-                      </div>
-                      
-                      <div className="flex items-center gap-4">
-                        <div className="flex items-center gap-1">
-                          <Star className="w-4 h-4" />
-                          <span>{repo.stars}</span>
-                        </div>
-                        
-                        <div className="flex items-center gap-1">
-                          <GitFork className="w-4 h-4" />
-                          <span>{repo.forks}</span>
-                        </div>
-                      </div>
-                      
-                      <Button
-                        variant={selectedRepos.includes(repo.name) ? "default" : "outline"}
-                        size="sm"
-                        onClick={() => toggleRepoSelection(repo.name)}
-                      >
-                        {selectedRepos.includes(repo.name) ? (
-                          <>
-                            <Check className="h-4 w-4 mr-1" />
-                            Selected
-                          </>
-                        ) : (
-                          'Select'
-                        )}
-                      </Button>
+                    <div className="flex items-center gap-1">
+                      <GitFork className="w-4 h-4" />
+                      <span>{repo.forks}</span>
                     </div>
                   </div>
-                ))}
-                
-                {filteredRepositories.length === 0 && !loading && (
-                  <div className="p-8 text-center text-muted-foreground border rounded-md">
-                    No repositories found matching '{searchQuery}'
-                  </div>
-                )}
+                  
+                  <Button
+                        variant={selectedRepo === repo.name ? "default" : "outline"}
+                    size="sm"
+                        onClick={() => handleRepoSelection(repo.name)}
+                  >
+                        {selectedRepo === repo.name ? (
+                      <>
+                        <Check className="h-4 w-4 mr-1" />
+                        Selected
+                      </>
+                    ) : (
+                      'Select'
+                    )}
+                  </Button>
+                </div>
               </div>
-            </TabsContent>
+            ))}
+            
+                {sortedRepositories.length === 0 && !loading && (
+              <div className="p-8 text-center text-muted-foreground border rounded-md">
+                No repositories found matching '{searchQuery}'
+              </div>
+            )}
+          </div>
+        </TabsContent>
           </>
         )}
       </Tabs>
@@ -428,26 +485,12 @@ const RepositoriesPage = () => {
         <CardHeader>
           <CardTitle>Repository Statistics</CardTitle>
           <CardDescription>
-            Activity metrics for your selected repositories
+            Activity metrics for {selectedRepo ? `"${selectedRepo}"` : "your selected repository"}
           </CardDescription>
         </CardHeader>
         
         <CardContent>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div className="border rounded-md p-4">
-              <h3 className="text-sm font-medium mb-3">Contribution Frequency</h3>
-              <div className="h-[200px] flex items-center justify-center">
-                <BarChart2 className="h-16 w-16 text-muted-foreground/50" />
-              </div>
-            </div>
-            
-            <div className="border rounded-md p-4">
-              <h3 className="text-sm font-medium mb-3">Activity Trends</h3>
-              <div className="h-[200px] flex items-center justify-center">
-                <BarChart2 className="h-16 w-16 text-muted-foreground/50" />
-              </div>
-            </div>
-          </div>
+          <RepositoryStats repositoryName={selectedRepo} />
         </CardContent>
       </Card>
     </div>

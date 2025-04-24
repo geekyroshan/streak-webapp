@@ -1,5 +1,4 @@
-
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -7,6 +6,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Switch } from '@/components/ui/switch';
+import { AlertCircle, Loader2 } from 'lucide-react';
 import { 
   Bell, 
   Calendar, 
@@ -17,7 +17,9 @@ import {
   Moon, 
   Save, 
   User,
-  MessageSquare
+  MessageSquare,
+  Plus,
+  Trash
 } from 'lucide-react';
 import {
   Select,
@@ -26,8 +28,91 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { useSettings, UserSettings } from '@/hooks/use-settings';
+import { useRepositories } from '@/hooks/use-repositories';
+import { useAuth } from '@/lib/AuthContext';
+import { Badge } from '@/components/ui/badge';
+import { useGitHubProfile } from '@/hooks/use-github-profile';
 
 const SettingsPage = () => {
+  const { settings, isLoading, isSaving, error, updateSettings, addCommitTemplate, removeCommitTemplate } = useSettings();
+  const { repositories, isLoading: isLoadingRepos } = useRepositories();
+  const { user } = useAuth();
+  const { profile, isLoading: isLoadingProfile } = useGitHubProfile();
+  
+  // Form state
+  const [notificationsEnabled, setNotificationsEnabled] = useState(true);
+  const [reminderTime, setReminderTime] = useState('18:00');
+  const [timezone, setTimezone] = useState('America/Los_Angeles');
+  const [darkMode, setDarkMode] = useState(false);
+  const [defaultRepository, setDefaultRepository] = useState<string | undefined>(undefined);
+  const [newCommitTemplate, setNewCommitTemplate] = useState('');
+  
+  // Update local state when settings are loaded
+  useEffect(() => {
+    if (settings) {
+      setNotificationsEnabled(settings.notificationsEnabled);
+      setReminderTime(settings.reminderTime || '18:00');
+      setTimezone(settings.timezone);
+      setDarkMode(settings.darkMode);
+      setDefaultRepository(settings.defaultRepository);
+    }
+  }, [settings]);
+  
+  // Save changes handlers
+  const handleSaveNotifications = async () => {
+    await updateSettings({
+      notificationsEnabled,
+      reminderTime,
+      timezone
+    });
+  };
+  
+  const handleSaveAppearance = async () => {
+    await updateSettings({
+      darkMode
+    });
+  };
+  
+  const handleSaveApplication = async () => {
+    await updateSettings({
+      defaultRepository
+    });
+  };
+  
+  const handleAddTemplate = async () => {
+    if (newCommitTemplate.trim()) {
+      await addCommitTemplate(newCommitTemplate.trim());
+      setNewCommitTemplate('');
+    }
+  };
+  
+  const handleRemoveTemplate = async (template: string) => {
+    await removeCommitTemplate(template);
+  };
+  
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center h-full">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+        <span className="ml-2">Loading settings...</span>
+      </div>
+    );
+  }
+  
+  if (error && !settings) {
+    return (
+      <Alert variant="destructive" className="my-4">
+        <AlertCircle className="h-4 w-4" />
+        <AlertTitle>Error</AlertTitle>
+        <AlertDescription>
+          Failed to load settings. Please refresh the page and try again.
+        </AlertDescription>
+      </Alert>
+    );
+  }
+  
   return (
     <div className="space-y-6">
       <div>
@@ -70,31 +155,19 @@ const SettingsPage = () => {
             
             <CardContent className="space-y-6">
               <div className="space-y-4">
-                <h3 className="text-sm font-medium">Streak Notifications</h3>
+                <h3 className="text-sm font-medium">Notification Settings</h3>
                 
                 <div className="space-y-2">
                   <div className="flex items-center justify-between">
                     <div className="flex-1">
-                      <Label htmlFor="streak-reminder" className="font-medium">Daily Streak Reminder</Label>
-                      <p className="text-sm text-muted-foreground">Receive a daily reminder to maintain your streak</p>
+                      <Label htmlFor="notifications-enabled" className="font-medium">Enable Notifications</Label>
+                      <p className="text-sm text-muted-foreground">Receive streak-related notifications</p>
                     </div>
-                    <Switch id="streak-reminder" defaultChecked />
-                  </div>
-                  
-                  <div className="flex items-center justify-between">
-                    <div className="flex-1">
-                      <Label htmlFor="streak-risk" className="font-medium">Streak at Risk Alert</Label>
-                      <p className="text-sm text-muted-foreground">Get notified when you haven't contributed today</p>
-                    </div>
-                    <Switch id="streak-risk" defaultChecked />
-                  </div>
-                  
-                  <div className="flex items-center justify-between">
-                    <div className="flex-1">
-                      <Label htmlFor="streak-broken" className="font-medium">Streak Broken Alert</Label>
-                      <p className="text-sm text-muted-foreground">Get notified when your streak is broken</p>
-                    </div>
-                    <Switch id="streak-broken" defaultChecked />
+                    <Switch 
+                      id="notifications-enabled" 
+                      checked={notificationsEnabled}
+                      onCheckedChange={setNotificationsEnabled}
+                    />
                   </div>
                 </div>
               </div>
@@ -107,7 +180,7 @@ const SettingsPage = () => {
                     <Label htmlFor="reminder-time">Daily Reminder Time</Label>
                     <div className="flex items-center gap-2">
                       <Clock className="h-4 w-4 text-muted-foreground" />
-                      <Select defaultValue="18:00">
+                      <Select value={reminderTime} onValueChange={setReminderTime}>
                         <SelectTrigger className="w-full">
                           <SelectValue placeholder="Select time" />
                         </SelectTrigger>
@@ -126,7 +199,7 @@ const SettingsPage = () => {
                     <Label htmlFor="timezone">Timezone</Label>
                     <div className="flex items-center gap-2">
                       <Globe className="h-4 w-4 text-muted-foreground" />
-                      <Select defaultValue="America/Los_Angeles">
+                      <Select value={timezone} onValueChange={setTimezone}>
                         <SelectTrigger className="w-full">
                           <SelectValue placeholder="Select timezone" />
                         </SelectTrigger>
@@ -142,33 +215,15 @@ const SettingsPage = () => {
                   </div>
                 </div>
               </div>
-              
-              <div className="space-y-4">
-                <h3 className="text-sm font-medium">Notification Channels</h3>
-                
-                <div className="space-y-2">
-                  <div className="flex items-center justify-between">
-                    <div className="flex-1">
-                      <Label htmlFor="email-notify" className="font-medium">Email Notifications</Label>
-                      <p className="text-sm text-muted-foreground">Receive notifications via email</p>
-                    </div>
-                    <Switch id="email-notify" defaultChecked />
-                  </div>
-                  
-                  <div className="flex items-center justify-between">
-                    <div className="flex-1">
-                      <Label htmlFor="browser-notify" className="font-medium">Browser Notifications</Label>
-                      <p className="text-sm text-muted-foreground">Receive notifications in your browser</p>
-                    </div>
-                    <Switch id="browser-notify" defaultChecked />
-                  </div>
-                </div>
-              </div>
             </CardContent>
             
             <CardFooter>
-              <Button className="gap-2">
-                <Save className="h-4 w-4" />
+              <Button 
+                className="gap-2"
+                onClick={handleSaveNotifications}
+                disabled={isSaving}
+              >
+                {isSaving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
                 Save Changes
               </Button>
             </CardFooter>
@@ -186,78 +241,89 @@ const SettingsPage = () => {
             
             <CardContent className="space-y-6">
               <div className="space-y-4">
-                <h3 className="text-sm font-medium">Streak Management</h3>
-                
-                <div className="space-y-2">
-                  <div className="flex items-center justify-between">
-                    <div className="flex-1">
-                      <Label htmlFor="auto-scan" className="font-medium">Automatic Repository Scanning</Label>
-                      <p className="text-sm text-muted-foreground">Periodically scan repositories for new activity</p>
-                    </div>
-                    <Switch id="auto-scan" defaultChecked />
-                  </div>
-                  
-                  <div className="flex items-center justify-between">
-                    <div className="flex-1">
-                      <Label htmlFor="weekend-exclude" className="font-medium">Exclude Weekends from Streaks</Label>
-                      <p className="text-sm text-muted-foreground">Don't count weekends in streak calculations</p>
-                    </div>
-                    <Switch id="weekend-exclude" />
-                  </div>
-                </div>
-              </div>
-              
-              <div className="space-y-4">
                 <h3 className="text-sm font-medium">Default Repository Settings</h3>
                 
                 <div className="space-y-4">
                   <div className="space-y-2">
                     <Label htmlFor="default-repo">Default Repository for Streak Actions</Label>
-                    <Select defaultValue="personal-website">
+                    <Select 
+                      value={defaultRepository} 
+                      onValueChange={setDefaultRepository}
+                      disabled={isLoadingRepos}
+                    >
                       <SelectTrigger>
                         <SelectValue placeholder="Select repository" />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="personal-website">personal-website</SelectItem>
-                        <SelectItem value="api-service">api-service</SelectItem>
-                        <SelectItem value="design-system">design-system</SelectItem>
+                        {isLoadingRepos ? (
+                          <SelectItem value="loading" disabled>Loading repositories...</SelectItem>
+                        ) : repositories && repositories.length > 0 ? (
+                          repositories.map(repo => (
+                            <SelectItem key={repo.id} value={repo.full_name}>
+                              {repo.full_name}
+                            </SelectItem>
+                          ))
+                        ) : (
+                          <SelectItem value="none" disabled>No repositories found</SelectItem>
+                        )}
                       </SelectContent>
                     </Select>
-                  </div>
-                  
-                  <div className="space-y-2">
-                    <Label htmlFor="commit-template">Default Commit Message Template</Label>
-                    <Textarea
-                      id="commit-template"
-                      rows={3}
-                      placeholder="Enter default commit message template"
-                      defaultValue="Update documentation and add comments"
-                    />
-                    <p className="text-xs text-muted-foreground">
-                      Use {'{date}'} and {'{repo}'} as placeholders for dynamic content
-                    </p>
                   </div>
                 </div>
               </div>
               
               <div className="space-y-4">
-                <h3 className="text-sm font-medium">Calendar Settings</h3>
-                
-                <div className="space-y-2">
-                  <div className="flex items-center justify-between">
-                    <div className="flex-1">
-                      <Label htmlFor="start-monday" className="font-medium">Start Week on Monday</Label>
-                      <p className="text-sm text-muted-foreground">Display calendar with Monday as the first day</p>
+                <h3 className="text-sm font-medium">Commit Message Templates</h3>
+                {settings?.commitMessageTemplates && (
+                  <div className="space-y-2">
+                    <div className="flex flex-wrap gap-2">
+                      {settings.commitMessageTemplates.map((template, index) => (
+                        <div key={index} className="flex items-center bg-secondary/50 rounded-md px-3 py-1">
+                          <span className="mr-2">{template}</span>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-6 w-6 rounded-full"
+                            onClick={() => handleRemoveTemplate(template)}
+                            disabled={isSaving}
+                          >
+                            <Trash className="h-3 w-3" />
+                          </Button>
+                        </div>
+                      ))}
                     </div>
-                    <Switch id="start-monday" />
+                    
+                    <div className="flex gap-2 mt-4">
+                      <Input
+                        placeholder="Add new template..."
+                        value={newCommitTemplate}
+                        onChange={(e) => setNewCommitTemplate(e.target.value)}
+                        className="flex-1"
+                      />
+                      <Button 
+                        size="sm" 
+                        className="gap-1"
+                        onClick={handleAddTemplate}
+                        disabled={isSaving || !newCommitTemplate.trim()}
+                      >
+                        <Plus className="h-4 w-4" /> Add
+                      </Button>
+                    </div>
+                    <p className="text-xs text-muted-foreground">
+                      Templates are used for automatic commits and can include placeholders like {"{date}"} and {"{repo}"}
+                    </p>
                   </div>
-                </div>
+                )}
               </div>
             </CardContent>
             
             <CardFooter>
-              <Button className="gap-2">
-                <Save className="h-4 w-4" />
+              <Button 
+                className="gap-2"
+                onClick={handleSaveApplication}
+                disabled={isSaving}
+              >
+                {isSaving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
                 Save Changes
               </Button>
             </CardFooter>
@@ -283,14 +349,22 @@ const SettingsPage = () => {
                   </div>
                   
                   <div className="flex-1">
-                    <div className="font-medium">johndoe</div>
-                    <div className="text-sm text-muted-foreground">Connected on April 5, 2025</div>
+                    <div className="font-medium">{user?.username || 'Not connected'}</div>
+                    <div className="text-sm text-muted-foreground">
+                      {user?.lastLogin 
+                        ? `Connected on ${new Date(user.lastLogin).toLocaleDateString()}` 
+                        : user?.githubId 
+                          ? 'Connected to GitHub'
+                          : 'Not logged in'}
+                    </div>
                   </div>
                   
-                  <Button variant="outline" className="gap-1">
-                    <Lock className="h-4 w-4" />
-                    Manage Access
-                  </Button>
+                  <a href="https://github.com/settings/connections/applications" target="_blank" rel="noopener noreferrer">
+                    <Button variant="outline" className="gap-1">
+                      <Lock className="h-4 w-4" />
+                      Manage Access
+                    </Button>
+                  </a>
                 </div>
               </div>
               
@@ -323,35 +397,30 @@ const SettingsPage = () => {
                   </div>
                 </div>
               </div>
-              
-              <div className="space-y-4">
-                <h3 className="text-sm font-medium">API Usage</h3>
-                
-                <div className="space-y-2">
-                  <div className="w-full bg-secondary/50 rounded-full h-3">
-                    <div className="bg-primary h-3 rounded-full w-3/4"></div>
-                  </div>
-                  <div className="text-xs text-muted-foreground">
-                    3,750 / 5,000 GitHub API requests used (75%)
+
+              {profile && (
+                <div className="space-y-4">
+                  <h3 className="text-sm font-medium">GitHub Stats</h3>
+                  
+                  <div className="grid grid-cols-3 gap-4">
+                    <div className="p-4 border rounded-md text-center">
+                      <div className="text-2xl font-bold">{profile.publicRepos}</div>
+                      <div className="text-xs text-muted-foreground">Public Repositories</div>
+                    </div>
+                    
+                    <div className="p-4 border rounded-md text-center">
+                      <div className="text-2xl font-bold">{profile.followers}</div>
+                      <div className="text-xs text-muted-foreground">Followers</div>
+                    </div>
+                    
+                    <div className="p-4 border rounded-md text-center">
+                      <div className="text-2xl font-bold">{profile.contributions}</div>
+                      <div className="text-xs text-muted-foreground">Contributions</div>
+                    </div>
                   </div>
                 </div>
-                
-                <p className="text-sm text-muted-foreground">
-                  API rate limits reset in 30 minutes.
-                </p>
-              </div>
+              )}
             </CardContent>
-            
-            <CardFooter className="flex justify-between">
-              <Button variant="outline" className="text-destructive border-destructive/30 hover:bg-destructive/10">
-                Disconnect GitHub
-              </Button>
-              
-              <Button className="gap-2">
-                <Save className="h-4 w-4" />
-                Save Changes
-              </Button>
-            </CardFooter>
           </Card>
         </TabsContent>
         
@@ -368,20 +437,21 @@ const SettingsPage = () => {
               <div className="space-y-4">
                 <h3 className="text-sm font-medium">Theme</h3>
                 
-                <div className="grid grid-cols-3 gap-4">
-                  <div className="border rounded-md overflow-hidden cursor-pointer bg-secondary/10 ring-2 ring-primary">
-                    <div className="h-24 bg-[#161b22]"></div>
-                    <div className="p-2 text-center text-sm font-medium">Dark (Default)</div>
-                  </div>
-                  
-                  <div className="border rounded-md overflow-hidden cursor-pointer">
+                <div className="grid grid-cols-2 gap-4">
+                  <div 
+                    className={`border rounded-md overflow-hidden cursor-pointer ${darkMode ? 'bg-secondary/10 ring-2 ring-primary' : ''}`}
+                    onClick={() => setDarkMode(false)}
+                  >
                     <div className="h-24 bg-white"></div>
                     <div className="p-2 text-center text-sm font-medium">Light</div>
                   </div>
                   
-                  <div className="border rounded-md overflow-hidden cursor-pointer">
-                    <div className="h-24 bg-gradient-to-b from-[#161b22] to-[#0d1117]"></div>
-                    <div className="p-2 text-center text-sm font-medium">System</div>
+                  <div 
+                    className={`border rounded-md overflow-hidden cursor-pointer ${darkMode ? '' : 'bg-secondary/10 ring-2 ring-primary'}`}
+                    onClick={() => setDarkMode(true)}
+                  >
+                    <div className="h-24 bg-[#161b22]"></div>
+                    <div className="p-2 text-center text-sm font-medium">Dark</div>
                   </div>
                 </div>
               </div>
@@ -480,8 +550,12 @@ const SettingsPage = () => {
             </CardContent>
             
             <CardFooter>
-              <Button className="gap-2">
-                <Save className="h-4 w-4" />
+              <Button 
+                className="gap-2"
+                onClick={handleSaveAppearance}
+                disabled={isSaving}
+              >
+                {isSaving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
                 Save Changes
               </Button>
             </CardFooter>
@@ -491,83 +565,85 @@ const SettingsPage = () => {
         <TabsContent value="profile" className="space-y-4">
           <Card>
             <CardHeader>
-              <CardTitle>Profile Settings</CardTitle>
+              <CardTitle>Profile Information</CardTitle>
               <CardDescription>
-                Update your personal information and preferences
+                Your GitHub profile information
               </CardDescription>
             </CardHeader>
             
             <CardContent className="space-y-6">
               <div className="space-y-4">
-                <h3 className="text-sm font-medium">Personal Information</h3>
-                
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="full-name">Full Name</Label>
-                    <Input id="full-name" defaultValue="John Doe" />
+                {isLoadingProfile ? (
+                  <div className="flex items-center justify-center py-8">
+                    <Loader2 className="h-6 w-6 animate-spin text-primary" />
                   </div>
-                  
-                  <div className="space-y-2">
-                    <Label htmlFor="display-name">Display Name</Label>
-                    <Input id="display-name" defaultValue="johndoe" />
-                  </div>
-                  
-                  <div className="space-y-2">
-                    <Label htmlFor="email">Email Address</Label>
-                    <Input id="email" type="email" defaultValue="john.doe@example.com" />
-                  </div>
-                  
-                  <div className="space-y-2">
-                    <Label htmlFor="location">Location</Label>
-                    <Input id="location" defaultValue="San Francisco, CA" />
-                  </div>
-                </div>
-              </div>
-              
-              <div className="space-y-4">
-                <h3 className="text-sm font-medium">Communication Preferences</h3>
-                
-                <div className="space-y-2">
-                  <div className="flex items-center justify-between">
-                    <div className="flex-1">
-                      <Label htmlFor="product-updates" className="font-medium">Product Updates</Label>
-                      <p className="text-sm text-muted-foreground">Receive emails about product updates and new features</p>
+                ) : profile ? (
+                  <div className="flex items-start gap-4">
+                    <img 
+                      src={profile.avatarUrl} 
+                      alt={profile.name} 
+                      className="w-16 h-16 rounded-full object-cover border"
+                    />
+                    <div className="space-y-2">
+                      <div>
+                        <h3 className="font-medium">{profile.name}</h3>
+                        <div className="text-sm text-muted-foreground">@{profile.login}</div>
+                      </div>
+                      {profile.location && (
+                        <div className="text-sm">
+                          <strong>Location:</strong> {profile.location}
+                        </div>
+                      )}
+                      <div className="text-sm text-muted-foreground">
+                        {user?.createdAt 
+                          ? `Connected since ${new Date(user.createdAt).toLocaleDateString()}`
+                          : 'GitHub User'
+                        }
+                      </div>
+                      <div className="mt-2">
+                        <a href={profile.profileUrl} target="_blank" rel="noopener noreferrer">
+                          <Button variant="outline" size="sm" className="gap-1">
+                            <GithubIcon className="h-4 w-4" />
+                            View GitHub Profile
+                          </Button>
+                        </a>
+                      </div>
                     </div>
-                    <Switch id="product-updates" defaultChecked />
                   </div>
-                  
-                  <div className="flex items-center justify-between">
-                    <div className="flex-1">
-                      <Label htmlFor="weekly-digest" className="font-medium">Weekly Activity Digest</Label>
-                      <p className="text-sm text-muted-foreground">Receive a weekly summary of your GitHub activity</p>
+                ) : user ? (
+                  <div className="flex items-start gap-4">
+                    {user.avatar && (
+                      <img 
+                        src={user.avatar} 
+                        alt={user.name} 
+                        className="w-16 h-16 rounded-full object-cover border"
+                      />
+                    )}
+                    <div className="space-y-2">
+                      <div>
+                        <h3 className="font-medium">{user.name}</h3>
+                        <div className="text-sm text-muted-foreground">@{user.username}</div>
+                      </div>
+                      {user.email && (
+                        <div className="text-sm">
+                          <strong>Email:</strong> {user.email}
+                        </div>
+                      )}
+                      <div className="text-sm text-muted-foreground">
+                        {user.createdAt 
+                          ? `Connected since ${new Date(user.createdAt).toLocaleDateString()}`
+                          : 'GitHub User'
+                        }
+                      </div>
                     </div>
-                    <Switch id="weekly-digest" defaultChecked />
                   </div>
-                </div>
-              </div>
-              
-              <div className="space-y-4">
-                <h3 className="text-sm font-medium">Account Management</h3>
-                
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <Button variant="outline" className="gap-2 justify-start">
-                    <MessageSquare className="h-4 w-4" />
-                    Contact Support
-                  </Button>
-                  
-                  <Button variant="outline" className="gap-2 justify-start text-destructive border-destructive/30 hover:bg-destructive/10">
-                    Delete Account
-                  </Button>
-                </div>
+                ) : (
+                  <div className="text-muted-foreground">
+                    Not logged in or unable to load profile information.
+                  </div>
+                )}
               </div>
             </CardContent>
-            
-            <CardFooter>
-              <Button className="gap-2">
-                <Save className="h-4 w-4" />
-                Save Changes
-              </Button>
-            </CardFooter>
           </Card>
         </TabsContent>
       </Tabs>

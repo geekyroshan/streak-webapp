@@ -43,6 +43,11 @@ export const repoService = {
   getRepository: async (owner: string, repo: string) => {
     const response = await api.get(`/repositories/${owner}/${repo}`);
     return response.data.data.repository;
+  },
+  getRepositoryStats: async (repoName: string) => {
+    // This endpoint doesn't exist yet, but we're preparing for future implementation
+    const response = await api.get(`/repositories/stats/${repoName}`);
+    return response.data.data;
   }
 };
 
@@ -304,6 +309,25 @@ export const streakService = {
       }
     }
   },
+
+  // Add a method to clean up all pending commits
+  cleanupPendingCommits: async () => {
+    try {
+      console.log('[API] Cleaning up all pending commits');
+      const response = await api.post('/streak/cleanup-pending-commits');
+      return response.data;
+    } catch (error: any) {
+      console.error('Error cleaning up pending commits:', error);
+      if (error.response) {
+        const errorMessage = error.response.data?.message || 'Failed to clean up pending commits';
+        throw new Error(errorMessage);
+      } else if (error.request) {
+        throw new Error('Network error: Unable to connect to server');
+      } else {
+        throw new Error(`Error: ${error.message}`);
+      }
+    }
+  },
 };
 
 // Contribution services
@@ -499,6 +523,109 @@ export const contributionService = {
           { name: '20-23', value: 0 }
         ]
       };
+    }
+  }
+};
+
+// GitHub activity services
+export const githubActivityService = {
+  // Get all types of user activities (commits, PRs, issues, reviews, stars)
+  getUserActivities: async (limit: number = 20, page: number = 1, activityType?: string, repo?: string) => {
+    try {
+      const params = new URLSearchParams();
+      params.append('limit', limit.toString());
+      params.append('page', page.toString());
+      if (activityType) params.append('type', activityType);
+      if (repo) params.append('repo', repo);
+      
+      const url = `/github/activities?${params.toString()}`;
+      const response = await api.get(url);
+      return response.data.data;
+    } catch (error: any) {
+      console.error('Error fetching GitHub activities:', error);
+      if (error.response) {
+        throw new Error(error.response.data?.message || 'Failed to fetch activities');
+      }
+      throw error;
+    }
+  },
+
+  // Get user profile information
+  getUserProfile: async () => {
+    try {
+      const response = await api.get('/github/profile');
+      return response.data.data;
+    } catch (error: any) {
+      console.error('Error fetching GitHub profile:', error);
+      if (error.response) {
+        throw new Error(error.response.data?.message || 'Failed to fetch profile');
+      }
+      throw error;
+    }
+  },
+
+  // Get contribution statistics
+  getContributionStats: async (since?: string) => {
+    try {
+      const params = new URLSearchParams();
+      if (since) params.append('since', since);
+      
+      const url = params.toString() ? `/github/stats?${params.toString()}` : '/github/stats';
+      const response = await api.get(url);
+      return response.data.data;
+    } catch (error: any) {
+      console.error('Error fetching contribution stats:', error);
+      if (error.response) {
+        throw new Error(error.response.data?.message || 'Failed to fetch contribution stats');
+      }
+      throw error;
+    }
+  },
+
+  // Get repositories for filtering
+  getUserRepositories: async () => {
+    try {
+      const response = await api.get('/github/repositories');
+      return response.data.data;
+    } catch (error: any) {
+      console.error('Error fetching repositories:', error);
+      if (error.response) {
+        throw new Error(error.response.data?.message || 'Failed to fetch repositories');
+      }
+      throw error;
+    }
+  },
+
+  // Export activity data
+  exportActivityData: async (format: 'csv' | 'json', since?: string, activityType?: string, repo?: string) => {
+    try {
+      const params = new URLSearchParams();
+      params.append('format', format);
+      if (since) params.append('since', since);
+      if (activityType) params.append('type', activityType);
+      if (repo) params.append('repo', repo);
+      
+      const url = `/github/export?${params.toString()}`;
+      const response = await api.get(url, { responseType: 'blob' });
+      
+      // Create a download link and trigger it
+      const downloadUrl = window.URL.createObjectURL(new Blob([response.data]));
+      const filename = `github-activity.${format}`;
+      
+      const link = document.createElement('a');
+      link.href = downloadUrl;
+      link.setAttribute('download', filename);
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      
+      return { success: true, filename };
+    } catch (error: any) {
+      console.error('Error exporting activity data:', error);
+      if (error.response) {
+        throw new Error(error.response.data?.message || 'Failed to export activity data');
+      }
+      throw error;
     }
   }
 };

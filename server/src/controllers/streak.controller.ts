@@ -319,4 +319,50 @@ export const cancelCommit = async (req: Request, res: Response, next: NextFuncti
   } catch (error) {
     next(error);
   }
+};
+
+// Clean up all pending and scheduled commits
+export const cleanupPendingCommits = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const user = req.user;
+    
+    // Get count before cleanup for reporting
+    const pendingCountBefore = await Commit.countDocuments({ 
+      user: user._id, 
+      status: 'pending'
+    });
+    
+    const scheduledCountBefore = await Commit.countDocuments({
+      user: user._id,
+      isScheduled: true
+    });
+    
+    // Delete all pending commits for this user
+    const deleteResult = await Commit.deleteMany({
+      user: user._id,
+      status: 'pending'
+    });
+    
+    // Also clean up any bulk schedules that are still active
+    const bulkScheduleResult = await BulkCommitSchedule.updateMany(
+      { user: user._id, status: 'active' },
+      { status: 'cancelled' }
+    );
+    
+    console.log(`[Controller] Cleaned up ${deleteResult.deletedCount} pending commits for user ${user._id}`);
+    console.log(`[Controller] Updated ${bulkScheduleResult.modifiedCount} active bulk schedules to cancelled`);
+    
+    res.status(200).json({
+      status: 'success',
+      message: 'Cleanup completed successfully',
+      data: {
+        pendingCommitsBefore: pendingCountBefore,
+        scheduledCommitsBefore: scheduledCountBefore,
+        commitsDeleted: deleteResult.deletedCount,
+        bulkSchedulesCancelled: bulkScheduleResult.modifiedCount
+      }
+    });
+  } catch (error) {
+    next(error);
+  }
 }; 

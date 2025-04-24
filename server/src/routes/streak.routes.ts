@@ -6,7 +6,8 @@ import {
   scheduleCommit,
   getBulkSchedules,
   cancelBulkSchedule,
-  cancelCommit
+  cancelCommit,
+  cleanupPendingCommits
 } from '../controllers/streak.controller';
 import { protect } from '../middleware/auth.middleware';
 import schedulerService from '../services/scheduler.service';
@@ -29,6 +30,9 @@ router.delete('/bulk-schedules/:id', cancelBulkSchedule);
 
 // Cancel a pending commit
 router.delete('/commits/:id', cancelCommit);
+
+// Cleanup all pending commits
+router.post('/cleanup-pending-commits', cleanupPendingCommits);
 
 // Debug route to manually trigger scheduler processing
 router.post('/debug/process-scheduled-commits', async (req, res) => {

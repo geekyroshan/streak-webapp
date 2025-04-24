@@ -12,6 +12,7 @@ import ActivityPage from "./pages/ActivityPage";
 import SettingsPage from "./pages/SettingsPage";
 import NotFound from "./pages/NotFound";
 import Index from "./pages/Index";
+import LogoutPage from "./pages/LogoutPage";
 import { AuthProvider } from "./lib/AuthContext";
 
 const queryClient = new QueryClient();
@@ -31,6 +32,7 @@ const App = () => (
             <Route path="/repositories" element={<Layout><RepositoriesPage /></Layout>} />
             <Route path="/activity" element={<Layout><ActivityPage /></Layout>} />
             <Route path="/settings" element={<Layout><SettingsPage /></Layout>} />
+            <Route path="/logout" element={<LogoutPage />} />
             <Route path="/index" element={<Navigate to="/" replace />} />
             <Route path="*" element={<NotFound />} />
           </Routes>

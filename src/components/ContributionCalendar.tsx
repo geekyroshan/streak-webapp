@@ -74,7 +74,7 @@ const ContributionDay = ({ level, date, count, isMissed, isFuture }: Contributio
           {isFuture ? (
             <p className="font-medium">Future date</p>
           ) : (
-            <p className="font-medium">{count} contributions</p>
+          <p className="font-medium">{count} contributions</p>
           )}
           <p className="text-xs text-muted-foreground">{date}</p>
         </TooltipContent>
@@ -137,13 +137,13 @@ export const ContributionCalendar = ({ calendarData }: ContributionCalendarProps
         
         // Always fetch data for the entire calendar year
         let data;
-        const startDate = `${selectedYear}-01-01`;
+          const startDate = `${selectedYear}-01-01`;
         const endDate = selectedYear === new Date().getFullYear() 
           ? format(new Date(), 'yyyy-MM-dd') // Today for current year
           : `${selectedYear}-12-31`;         // Dec 31 for past years
         
         console.log(`Fetching contributions for date range: ${startDate} to ${endDate}`);
-        data = await contributionService.getUserContributions(startDate);
+          data = await contributionService.getUserContributions(startDate);
         
         console.log('Contribution data received:', data);
         setContributionData(data);
@@ -228,7 +228,7 @@ export const ContributionCalendar = ({ calendarData }: ContributionCalendarProps
           const contribDate = new Date(day.date);
           
           // Always filter by calendar year regardless of current year
-          return contribDate.getFullYear() === selectedYear;
+            return contribDate.getFullYear() === selectedYear;
         });
         
         // Log filtered contributions
@@ -368,11 +368,11 @@ export const ContributionCalendar = ({ calendarData }: ContributionCalendarProps
       // Find the first week index containing data for the current year
       let firstWeekOfYear = 0;
       let lastWeekOfYear = data.length - 1;
-      
+    
       // Find first week containing January
       for (let i = 0; i < data.length; i++) {
         if (!data[i].days || data[i].days.length === 0) continue;
-        
+      
         for (const day of data[i].days) {
           if (!day.fullDate) continue;
           
@@ -401,7 +401,7 @@ export const ContributionCalendar = ({ calendarData }: ContributionCalendarProps
         monthPositions.push({
           month: months[i],
           offset: finalPosition
-        });
+      });
       }
       
       return monthPositions;
@@ -417,11 +417,11 @@ export const ContributionCalendar = ({ calendarData }: ContributionCalendarProps
       
       for (const day of week.days) {
         if (!day.fullDate) continue;
-        
+      
         const date = new Date(day.fullDate);
         if (date.getFullYear() === selectedYear) {
-          const month = date.getMonth();
-          
+      const month = date.getMonth();
+      
           // If we haven't recorded this month yet, store its week index
           if (!monthWeeks.has(month)) {
             monthWeeks.set(month, weekIndex);
@@ -436,11 +436,11 @@ export const ContributionCalendar = ({ calendarData }: ContributionCalendarProps
       for (let i = 0; i < 12; i++) {
         // If we found this month in the data, use its actual position
         if (monthWeeks.has(i)) {
-          monthPositions.push({
+        monthPositions.push({
             month: months[i],
             offset: monthWeeks.get(i)!
-          });
-        } else {
+        });
+      } else {
           // Month not found in data - estimate its position
           
           // Try to find the previous and next available months
@@ -487,7 +487,7 @@ export const ContributionCalendar = ({ calendarData }: ContributionCalendarProps
           // Ensure the estimated week is within bounds
           estimatedWeek = Math.max(0, Math.min(estimatedWeek, data.length - 1));
           
-          monthPositions.push({
+            monthPositions.push({
             month: months[i],
             offset: estimatedWeek
           });
@@ -621,12 +621,12 @@ export const ContributionCalendar = ({ calendarData }: ContributionCalendarProps
                     const shouldDisplay = !tooClose || isImportantMonth;
                     
                     return (
-                      <div 
-                        key={i} 
+                    <div 
+                      key={i} 
                         className="text-xs font-medium relative"
-                        style={{ 
-                          gridColumnStart: label.offset + 1,
-                          gridColumnEnd: "span 1"
+                      style={{ 
+                        gridColumnStart: label.offset + 1,
+                        gridColumnEnd: "span 1" 
                         }}
                       >
                         <span 
@@ -635,9 +635,9 @@ export const ContributionCalendar = ({ calendarData }: ContributionCalendarProps
                             color: (label.month === 'Jan' ? 'var(--primary)' : 
                                    isImportantMonth ? 'var(--foreground)' : 'var(--muted-foreground)'),
                             fontWeight: label.month === 'Jan' || isImportantMonth ? 'bold' : 'normal'
-                          }}
-                        >
-                          {label.month}
+                      }}
+                    >
+                      {label.month}
                         </span>
                         <div 
                           className="h-0.5 bg-border/50 absolute left-0 bottom-0"
@@ -647,7 +647,7 @@ export const ContributionCalendar = ({ calendarData }: ContributionCalendarProps
                             opacity: shouldDisplay ? 0.8 : 0.2
                           }}
                         ></div>
-                      </div>
+                    </div>
                     );
                   })}
                 </div>

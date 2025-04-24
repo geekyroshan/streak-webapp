@@ -7,6 +7,7 @@ import userRoutes from './routes/user.routes';
 import repoRoutes from './routes/repository.routes';
 import streakRoutes from './routes/streak.routes';
 import contributionRoutes from './routes/contribution.routes';
+import githubRoutes from './routes/github.routes';
 import { errorHandler } from './middleware/errorHandler';
 import { connectDatabase } from './config/database';
 import './services/scheduler.service'; // Initialize the scheduler
@@ -49,6 +50,7 @@ app.use('/api/user', userRoutes);
 app.use('/api/repositories', repoRoutes);
 app.use('/api/streak', streakRoutes);
 app.use('/api/contributions', contributionRoutes);
+app.use('/api/github', githubRoutes);
 
 // Error handling middleware
 app.use(errorHandler);

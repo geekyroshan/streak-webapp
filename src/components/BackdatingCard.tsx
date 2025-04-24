@@ -248,22 +248,22 @@ export const BackdatingCard = () => {
               </div>
               
               <div className="flex items-center gap-2">
-                <Button 
-                  variant="outline" 
+            <Button 
+              variant="outline" 
                   size="sm" 
                   className="gap-1 text-xs h-8"
                   onClick={() => fetchMissedDays(12)}
                 >
                   <Clock className="h-3.5 w-3.5" />
                   <span>Refresh</span>
-                </Button>
-              </div>
+            </Button>
+          </div>
             </div>
             
             <div className="space-y-2">
               {missedDays.slice(0, 3).map(day => (
                 <div 
-                  key={day.id}
+                  key={day.id} 
                   className="flex justify-between items-center p-2 rounded-md bg-black/10 hover:bg-black/20 transition-colors"
                 >
                   <div className="flex flex-col">
@@ -309,7 +309,7 @@ export const BackdatingCard = () => {
                       <ChevronDown className="h-3 w-3" />
                     </Button>
                   </Link>
-                </div>
+            </div>
               )}
             </div>
             
@@ -367,14 +367,14 @@ export const BackdatingCard = () => {
                             Fix
                           </Button>
                           
-                          <Button
+              <Button
                             size="sm"
-                            variant="ghost"
+                variant="ghost" 
                             className="h-7 w-7 p-0"
                             onClick={() => {
                               // Add your removeManualDate function here
                             }}
-                          >
+              >
                             <X className="h-3.5 w-3.5" />
                           </Button>
                         </div>
@@ -388,13 +388,13 @@ export const BackdatingCard = () => {
                       }}
                     >
                       Fix All Manual Dates
-                    </Button>
+              </Button>
                   </div>
                 )}
               </div>
             )}
           </div>
-        )}
+          )}
       </GlassCardContent>
     </GlassCard>
   );

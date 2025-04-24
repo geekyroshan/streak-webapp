@@ -1,23 +1,6 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { authService } from './api';
-
-// User type definition
-interface User {
-  _id: string;
-  githubId: string;
-  username: string;
-  name: string;
-  email?: string;
-  avatar?: string;
-  settings: {
-    darkMode: boolean;
-    timezone: string;
-    defaultRepository?: string;
-    notificationsEnabled: boolean;
-    reminderTime?: string;
-    commitMessageTemplates: string[];
-  };
-}
+import { User } from '@/types/user';
 
 // Auth context type
 interface AuthContextType {

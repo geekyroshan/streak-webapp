@@ -148,8 +148,8 @@ export const ActivityPatterns = () => {
       <CardHeader className="pb-3">
         <div className="flex justify-between items-center">
           <div>
-            <CardTitle>Activity Patterns</CardTitle>
-            <CardDescription>Analysis of your contribution habits</CardDescription>
+        <CardTitle>Activity Patterns</CardTitle>
+        <CardDescription>Analysis of your contribution habits</CardDescription>
           </div>
           
           <Button
@@ -200,7 +200,7 @@ export const ActivityPatterns = () => {
             <span className="ml-2">Loading activity data...</span>
           </div>
         ) : error ? (
-          <div className="h-[200px] flex items-center justify-center">
+            <div className="h-[200px] flex items-center justify-center">
             <p className="text-muted-foreground">Failed to load activity data. Please try again later.</p>
           </div>
         ) : (
