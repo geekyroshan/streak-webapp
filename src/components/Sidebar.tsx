@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { cn } from "@/lib/utils";
@@ -70,7 +69,6 @@ export const Sidebar = () => {
   
   const navigationItems = [
     { icon: LineChart, label: 'Dashboard', path: '/' },
-    { icon: CalendarDays, label: 'Contribution Calendar', path: '/calendar' },
     { icon: GitCommit, label: 'Streak Manager', path: '/streak' },
     { icon: Code, label: 'Repositories', path: '/repositories' },
     { icon: Clock, label: 'Activity History', path: '/activity' },

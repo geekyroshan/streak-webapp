@@ -37,6 +37,48 @@ import { addDays, isBefore, isAfter, startOfDay, startOfWeek, endOfWeek, eachDay
 import { Switch } from '@/components/ui/switch';
 import { Label as UILabel } from '@/components/ui/label';
 import { DayPicker } from 'react-day-picker';
+import { cn } from '@/lib/utils';
+
+// Custom Calendar wrapper with proper type handling and consistent styling
+const StyledCalendar = (props: any) => {
+  const { selected, onSelect, className, ...rest } = props;
+  
+  // Create a type-safe handler for onSelect
+  const handleSelect = React.useCallback(
+    (day: Date | undefined) => {
+      onSelect?.(day);
+    },
+    [onSelect]
+  );
+  
+  // Default styles for all calendars in the app
+  const defaultClassNames = {
+    day_selected: "bg-green-600 text-white hover:bg-green-600 hover:text-white focus:bg-green-600 focus:text-white",
+    day_today: "bg-accent text-accent-foreground border border-green-400",
+    head_cell: "text-muted-foreground rounded-md w-9 font-normal text-xs",
+    cell: "h-9 w-9 text-center text-sm p-0 relative [&:has([aria-selected])]:bg-accent first:[&:has([aria-selected])]:rounded-md last:[&:has([aria-selected])]:rounded-md focus-within:relative focus-within:z-20",
+    month: "space-y-2",
+    caption: "flex justify-between pt-1 relative items-center px-2",
+    caption_label: "text-sm font-medium text-center",
+    nav_button: "h-7 w-7 bg-transparent p-0 opacity-70 hover:opacity-100 hover:bg-accent rounded-md",
+  };
+  
+  // Merge any custom classNames with the defaults
+  const mergedClassNames = { 
+    ...defaultClassNames, 
+    ...(props.classNames || {}) 
+  };
+  
+  return (
+    <CalendarComponent 
+      {...rest} 
+      selected={selected} 
+      onSelect={handleSelect} 
+      className={cn("rounded-md border", className)}
+      classNames={mergedClassNames}
+    />
+  );
+};
 
 const BulkDatePicker = ({ 
   date, 
@@ -58,8 +100,8 @@ const BulkDatePicker = ({
           {date ? format(date, "PPP") : <span>Pick a date</span>}
         </Button>
       </PopoverTrigger>
-      <PopoverContent className="w-auto p-0">
-        <DayPicker
+      <PopoverContent className="w-auto p-0" align="start">
+        <StyledCalendar
           mode="single"
           selected={date}
           onSelect={setDate}
@@ -134,7 +176,7 @@ const StreakPage = () => {
       // Format according to what the server expects in streak.controller.ts
       const formattedDate = format(selectedDate, 'yyyy-MM-dd');
       // Convert time like "2:30 PM" to ISO datetime format
-      let timeComponents = commitTime.match(/(\d+):(\d+)\s*(AM|PM)/i);
+      const timeComponents = commitTime.match(/(\d+):(\d+)\s*(AM|PM)/i);
       let hours = parseInt(timeComponents?.[1] || "12");
       const minutes = timeComponents?.[2] || "00";
       const period = timeComponents?.[3]?.toUpperCase() || "PM";
@@ -286,7 +328,7 @@ const StreakPage = () => {
       // Format according to what the server expects in streak.controller.ts
       const formattedDate = format(selectedDate, 'yyyy-MM-dd');
       // Convert time like "2:30 PM" to ISO datetime format
-      let timeComponents = commitTime.match(/(\d+):(\d+)\s*(AM|PM)/i);
+      const timeComponents = commitTime.match(/(\d+):(\d+)\s*(AM|PM)/i);
       let hours = parseInt(timeComponents?.[1] || "12");
       const minutes = timeComponents?.[2] || "00";
       const period = timeComponents?.[3]?.toUpperCase() || "PM";
@@ -391,7 +433,7 @@ const StreakPage = () => {
       
       if (timeSelectionMode === 'single') {
         // Single time mode - use the same time for start and end
-        let timeComponents = commitTime.match(/(\d+):(\d+)\s*(AM|PM)/i);
+        const timeComponents = commitTime.match(/(\d+):(\d+)\s*(AM|PM)/i);
         let hours = parseInt(timeComponents?.[1] || "12");
         const minutes = timeComponents?.[2] || "00";
         const period = timeComponents?.[3]?.toUpperCase() || "PM";
@@ -873,7 +915,7 @@ const StreakPage = () => {
                           </Button>
                         </PopoverTrigger>
                         <PopoverContent className="w-auto p-0">
-                          <CalendarComponent
+                          <StyledCalendar
                             mode="single"
                             selected={selectedDate}
                             onSelect={setSelectedDate}

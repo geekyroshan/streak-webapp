@@ -148,7 +148,7 @@ export function TimePicker({
             (time || "Select time")}
         </Button>
       </PopoverTrigger>
-      <PopoverContent className="w-auto p-4">
+      <PopoverContent className="w-auto p-4" align="start">
         <div className="flex items-center justify-between space-x-2">
           <div className="grid gap-1 text-center">
             <div className="text-xs">Hour</div>
@@ -177,7 +177,11 @@ export function TimePicker({
             <div className="text-xs">Period</div>
             <Button
               variant="outline"
-              className="w-14"
+              className={cn(
+                "w-14",
+                localPeriod === "AM" && "bg-slate-100",
+                localPeriod === "PM" && "bg-slate-100"
+              )}
               onClick={togglePeriod}
             >
               {localPeriod}
@@ -193,7 +197,7 @@ export function TimePicker({
                   <Button 
                     variant="outline" 
                     size="sm" 
-                    className="w-full"
+                    className="w-full bg-green-50 border-green-200 hover:bg-green-100 hover:text-green-800 text-green-700"
                     onClick={generateRandomTimes}
                   >
                     <Shuffle className="h-4 w-4 mr-2" />
@@ -213,7 +217,7 @@ export function TimePicker({
             <div className="text-xs mb-2">Selected Times:</div>
             <div className="flex flex-wrap gap-2">
               {times.map((t) => (
-                <Badge key={t} variant="secondary" className="cursor-pointer" onClick={() => removeTime(t)}>
+                <Badge key={t} variant="secondary" className="cursor-pointer bg-green-100 text-green-800 hover:bg-green-200" onClick={() => removeTime(t)}>
                   {t} <span className="ml-1">×</span>
                 </Badge>
               ))}
@@ -225,6 +229,7 @@ export function TimePicker({
           <Button 
             size="sm"
             onClick={applyTimeChange}
+            className="bg-green-600 hover:bg-green-700"
           >
             {multiMode ? "Add Time" : "Set Time"}
           </Button>

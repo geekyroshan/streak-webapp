@@ -51,14 +51,10 @@ interface ScheduleBulkCommitPayload {
   owner: string;
   startDate: string;
   endDate: string;
-  timeRange: {
-    start?: string;
-    end?: string;
-    times?: string[];
-  };
-  messageTemplate: string;
-  filesToChange: string[];
-  frequency: 'daily' | 'weekdays' | 'weekends' | 'custom';
+  timeRange?: { startTime: string; endTime: string };
+  messageTemplate?: string;
+  filesToChange?: string[];
+  frequency?: string;
   customDays?: number[];
   repositoryUrl?: string;
 }
@@ -158,7 +154,7 @@ export const streakService = {
     }
   },
   
-  async scheduleBulkCommits({
+  scheduleBulkCommits: async ({
     repositoryName,
     owner,
     startDate,
@@ -169,9 +165,9 @@ export const streakService = {
     frequency,
     customDays,
     repositoryUrl
-  }: ScheduleBulkCommitPayload): Promise<any> {
+  }: ScheduleBulkCommitPayload): Promise<any> => {
     try {
-      console.log(`Scheduling bulk commits from ${startDate} to ${endDate}`);
+      console.log('Scheduling bulk commits...');
       
       const response = await api.post('/streak/schedule-bulk-commits', {
         repository: {

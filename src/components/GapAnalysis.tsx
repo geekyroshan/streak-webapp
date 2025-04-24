@@ -87,7 +87,7 @@ export const GapAnalysis = () => {
     setIsFixingAny(true);
     
     let successCount = 0;
-    let failedDates: string[] = [];
+    const failedDates: string[] = [];
     
     try {
       // Process each selected date

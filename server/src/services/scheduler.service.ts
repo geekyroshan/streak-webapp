@@ -554,6 +554,27 @@ class SchedulerService {
       };
     }
   }
+
+  /**
+   * Get suggested file paths that are typically not in .gitignore
+   */
+  getSuggestedFilePaths(): string[] {
+    return [
+      'README.md',
+      'CONTRIBUTING.md',
+      'docs/README.md',
+      'documentation/README.md',
+      'docs/index.md',
+      'docs/guide.md',
+      'docs/usage.md',
+      'docs/examples.md',
+      'LICENSE',
+      'CHANGELOG.md',
+      '.github/PULL_REQUEST_TEMPLATE.md',
+      '.github/ISSUE_TEMPLATE.md',
+      '.github/workflows/config.yml'
+    ];
+  }
 }
 
 // Create a singleton instance

@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { FileEdit, Search, X } from 'lucide-react';
+import { FileEdit, Search, X, Info } from 'lucide-react';
 import {
   Dialog,
   DialogContent,
@@ -14,6 +14,12 @@ import {
 } from '@/components/ui/dialog';
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from '@/components/ui/tooltip';
 
 interface FileSelectorProps {
   file: string;
@@ -26,25 +32,42 @@ interface FileSelectorProps {
 export function FileSelector({ file, setFile, repository, repoOwner, className }: FileSelectorProps) {
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedFiles, setSelectedFiles] = useState<string[]>([]);
+  const [customPath, setCustomPath] = useState('');
   
-  // For demo purposes, we'll use a predefined list of files
-  // In a real application, this would be fetched from the GitHub API
+  // Combine recommended files (documentation) with common source files
   const possibleFiles = [
+    // Documentation files (recommended, rarely in .gitignore)
     'README.md',
+    'CONTRIBUTING.md',
     'LICENSE',
-    'src/App.js',
+    'CHANGELOG.md',
+    'docs/README.md',
+    'docs/index.md',
+    
+    // Source code files
     'src/index.js',
+    'src/App.js',
+    'src/main.js',
+    'src/index.ts',
+    'src/App.tsx',
     'src/components/Header.js',
     'src/components/Footer.js',
     'src/pages/Home.js',
     'src/pages/About.js',
-    'src/pages/Contact.js',
-    'src/styles/main.css',
-    'public/index.html',
-    'docs/api-reference.md',
-    'tests/App.test.js',
+    'src/utils/helpers.js',
+    'src/utils/format.js',
+    
+    // Configuration files
     'package.json',
-    '.gitignore',
+    'tsconfig.json',
+    '.eslintrc.js',
+    'webpack.config.js',
+    'vite.config.js',
+    
+    // Other common files
+    'public/index.html',
+    'styles/main.css',
+    'assets/style.css'
   ];
   
   // Filter files based on search term
@@ -56,7 +79,14 @@ export function FileSelector({ file, setFile, repository, repoOwner, className }
     setFile(filePath);
     // Also add to selected files if not already there
     if (!selectedFiles.includes(filePath)) {
-      setSelectedFiles([...selectedFiles, filePath]);
+      setSelectedFiles([...selectedFiles, filePath].slice(-5)); // Keep last 5 selections
+    }
+  };
+  
+  const handleAddCustomPath = () => {
+    if (customPath && customPath.trim()) {
+      handleSelectFile(customPath.trim());
+      setCustomPath('');
     }
   };
   
@@ -94,7 +124,25 @@ export function FileSelector({ file, setFile, repository, repoOwner, className }
       
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
-          <DialogTitle>Select File</DialogTitle>
+          <DialogTitle className="flex items-center">
+            Select File
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button variant="ghost" size="sm" className="ml-2 h-6 w-6 p-0">
+                    <Info className="h-4 w-4" />
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>
+                  <p className="max-w-xs">
+                    You can select any file in the repository. 
+                    If the file is in .gitignore, the system will
+                    force add it using "git add -f".
+                  </p>
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
+          </DialogTitle>
           <DialogDescription>
             Choose a file from {repository || 'your repository'} to modify.
           </DialogDescription>
@@ -139,11 +187,33 @@ export function FileSelector({ file, setFile, repository, repoOwner, className }
             </div>
           </div>
           
+          <div className="space-y-2">
+            <div className="text-sm font-medium">Custom File Path</div>
+            <div className="flex space-x-2">
+              <Input
+                value={customPath}
+                onChange={(e) => setCustomPath(e.target.value)}
+                placeholder="Enter any file path..."
+                className="flex-1"
+                onKeyDown={(e) => e.key === 'Enter' && handleAddCustomPath()}
+              />
+              <Button
+                onClick={handleAddCustomPath}
+                disabled={!customPath.trim()}
+              >
+                Add
+              </Button>
+            </div>
+            <p className="text-xs text-muted-foreground">
+              You can enter any file path, even if it's not in the list above.
+            </p>
+          </div>
+          
           {selectedFiles.length > 0 && (
             <div>
               <div className="text-sm font-medium mb-2">Recently Selected</div>
               <div className="space-y-1">
-                {selectedFiles.slice(0, 3).map((filePath) => (
+                {selectedFiles.slice(-3).map((filePath) => (
                   <button
                     key={filePath}
                     onClick={() => handleSelectFile(filePath)}

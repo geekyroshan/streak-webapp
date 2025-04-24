@@ -386,9 +386,19 @@ export class GitHubService {
       await git.addConfig('user.name', userProfile.name || userProfile.login);
       await git.addConfig('user.email', userEmail);
       
-      // Stage the changes
+      // Stage the changes - use -f flag to force add even if the file is in .gitignore
       console.log(`[GitHub] Staging changes for file: ${filePath}`);
-      await git.add(filePath);
+      try {
+        await git.add(filePath);
+      } catch (addError: any) {
+        // If the file is ignored by .gitignore, try force adding it
+        if (addError.message && addError.message.includes('ignored by one of your .gitignore files')) {
+          console.log(`[GitHub] File is in .gitignore, attempting to force add with -f flag`);
+          await git.raw(['add', '-f', filePath]);
+        } else {
+          throw addError;
+        }
+      }
       
       // Set environment variables for backdating
       console.log(`[GitHub] Setting commit date to: ${dateTime}`);

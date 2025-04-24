@@ -1,8 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { StreakStats } from '@/components/StreakStats';
 import { ContributionCalendar } from '@/components/ContributionCalendar';
-import { RepositoryBrowser } from '@/components/RepositoryBrowser';
-import { GapAnalysis } from '@/components/GapAnalysis';
+import { ActivityPatterns } from '@/components/ActivityPatterns';
 import { WelcomeModal } from '@/components/WelcomeModal';
 import { BackdatingCard } from '@/components/BackdatingCard';
 import { Button } from '@/components/ui/button';
@@ -96,10 +95,7 @@ const Dashboard = () => {
       
       <ContributionCalendar />
       
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        <RepositoryBrowser />
-        <GapAnalysis />
-      </div>
+      <ActivityPatterns />
       
       <div className="flex justify-center mt-6">
         <Link to="/streak">

@@ -26,7 +26,7 @@ const App = () => (
           <Routes>
             <Route path="/" element={<Index />} />
             <Route path="/dashboard" element={<Layout><Dashboard /></Layout>} />
-            <Route path="/calendar" element={<Layout><CalendarPage /></Layout>} />
+            <Route path="/calendar" element={<Navigate to="/dashboard" replace />} />
             <Route path="/streak" element={<Layout><StreakPage /></Layout>} />
             <Route path="/repositories" element={<Layout><RepositoriesPage /></Layout>} />
             <Route path="/activity" element={<Layout><ActivityPage /></Layout>} />
