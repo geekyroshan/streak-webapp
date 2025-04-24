@@ -40,9 +40,10 @@ interface ContributionDayProps {
   date: string;
   count: number;
   isMissed?: boolean;
+  isFuture?: boolean;
 }
 
-const ContributionDay = ({ level, date, count, isMissed }: ContributionDayProps) => {
+const ContributionDay = ({ level, date, count, isMissed, isFuture }: ContributionDayProps) => {
   // Inline styles as a fallback in case CSS classes don't work
   const bgColors = {
     0: '#161b22',
@@ -60,13 +61,21 @@ const ContributionDay = ({ level, date, count, isMissed }: ContributionDayProps)
             className={cn(
               "w-3 h-3 md:w-4 md:h-4 rounded-sm transition-colors",
               level === 4 ? "animate-pulse-subtle" : "",
+              isFuture ? "opacity-40" : "",
               `contribution-level-${level}`
             )}
-            style={{ backgroundColor: bgColors[level] }}
+            style={{ 
+              backgroundColor: bgColors[level],
+              border: isFuture ? '1px dashed rgba(255,255,255,0.1)' : 'none',
+            }}
           />
         </TooltipTrigger>
         <TooltipContent>
-          <p className="font-medium">{count} contributions</p>
+          {isFuture ? (
+            <p className="font-medium">Future date</p>
+          ) : (
+            <p className="font-medium">{count} contributions</p>
+          )}
           <p className="text-xs text-muted-foreground">{date}</p>
         </TooltipContent>
       </Tooltip>
@@ -80,6 +89,7 @@ interface ContributionWeekProps {
     date: string;
     count: number;
     isMissed?: boolean;
+    isFuture?: boolean;
   }>;
 }
 
@@ -100,6 +110,7 @@ interface ContributionCalendarProps {
       date: string;
       count: number;
       isMissed?: boolean;
+      isFuture?: boolean;
     }>;
   }>;
 }
@@ -124,17 +135,15 @@ export const ContributionCalendar = ({ calendarData }: ContributionCalendarProps
         setError(null);
         console.log('Fetching contribution data...');
         
-        // By default, fetch data for the last year
+        // Always fetch data for the entire calendar year
         let data;
-        if (selectedYear === new Date().getFullYear()) {
-          // For current year, fetch last 12 months (default behavior)
-          data = await contributionService.getUserContributions();
-        } else {
-          // For previous years, specify the year range
-          const startDate = `${selectedYear}-01-01`;
-          const endDate = `${selectedYear}-12-31`;
-          data = await contributionService.getUserContributions(startDate);
-        }
+        const startDate = `${selectedYear}-01-01`;
+        const endDate = selectedYear === new Date().getFullYear() 
+          ? format(new Date(), 'yyyy-MM-dd') // Today for current year
+          : `${selectedYear}-12-31`;         // Dec 31 for past years
+        
+        console.log(`Fetching contributions for date range: ${startDate} to ${endDate}`);
+        data = await contributionService.getUserContributions(startDate);
         
         console.log('Contribution data received:', data);
         setContributionData(data);
@@ -206,21 +215,20 @@ export const ContributionCalendar = ({ calendarData }: ContributionCalendarProps
       if (contributions && contributions.length > 0) {
         let totalCount = 0;
         
-        // Filter contributions based on selected year
+        // Filter contributions based on selected year and remove any scheduled commits
         const filteredContributions = contributions.filter((day: any) => {
           if (!day.date) return false;
           
-          const contribDate = new Date(day.date);
-          // For current year, include last 12 months
-          if (selectedYear === new Date().getFullYear()) {
-            const oneYearAgo = new Date();
-            oneYearAgo.setFullYear(oneYearAgo.getFullYear() - 1);
-            return contribDate >= oneYearAgo;
-          } 
-          // For other years, include only that year
-          else {
-            return contribDate.getFullYear() === selectedYear;
+          // Skip scheduled contributions
+          if (day.isScheduled) {
+            console.log(`Skipping scheduled contribution on ${day.date}`);
+            return false;
           }
+          
+          const contribDate = new Date(day.date);
+          
+          // Always filter by calendar year regardless of current year
+          return contribDate.getFullYear() === selectedYear;
         });
         
         // Log filtered contributions
@@ -249,18 +257,12 @@ export const ContributionCalendar = ({ calendarData }: ContributionCalendarProps
       
       // Build calendar grid based on selected year
       const calendarData = [];
-      let startDate, endDate;
       
-      if (selectedYear === new Date().getFullYear()) {
-        // If current year, show the last 12 months
-        endDate = new Date(); // Today
-        startDate = new Date();
-        startDate.setFullYear(endDate.getFullYear() - 1); // One year ago
-      } else {
-        // For past years, show that specific year
-        startDate = new Date(selectedYear, 0, 1); // January 1st of selected year
-        endDate = new Date(selectedYear, 11, 31); // December 31st of selected year
-      }
+      // Always use Jan 1 to Dec 31 of the selected year
+      const startDate = new Date(selectedYear, 0, 1); // January 1st of selected year
+      
+      // For the selected year, always show the full year (Jan-Dec)
+      const endDate = new Date(selectedYear, 11, 31); // December 31st of selected year
       
       // Adjust to include full weeks
       const startOfWeek = new Date(startDate);
@@ -276,6 +278,9 @@ export const ContributionCalendar = ({ calendarData }: ContributionCalendarProps
       const totalDays = Math.round((endOfWeek.getTime() - startOfWeek.getTime()) / (1000 * 60 * 60 * 24)) + 1;
       const numberOfWeeks = Math.ceil(totalDays / 7);
       
+      // Get today's date to identify future dates
+      const today = new Date();
+      
       // Create weeks
       for (let week = 0; week < numberOfWeeks; week++) {
         const weekData = { days: [] as any[] };
@@ -286,7 +291,11 @@ export const ContributionCalendar = ({ calendarData }: ContributionCalendarProps
           date.setDate(startOfWeek.getDate() + (week * 7) + day);
           
           const dateString = date.toISOString().split('T')[0];
-          const contribution = contributionsByDate[dateString] || { count: 0 };
+          const isFutureDate = date > today;
+          
+          // For future dates in current year, show empty squares
+          // For past dates, show actual contribution data
+          const contribution = isFutureDate ? { count: 0 } : (contributionsByDate[dateString] || { count: 0 });
           const count = contribution.count || 0;
           
           // Determine contribution level based on count
@@ -310,7 +319,8 @@ export const ContributionCalendar = ({ calendarData }: ContributionCalendarProps
             count,
             isMissed,
             month: date.getMonth(),
-            fullDate: date
+            fullDate: date,
+            isFuture: isFutureDate
           });
         }
         
@@ -353,70 +363,145 @@ export const ContributionCalendar = ({ calendarData }: ContributionCalendarProps
     const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
     const monthPositions: { month: string, offset: number }[] = [];
     
-    // Track the months we've seen
-    const seenMonths = new Map<number, boolean>();
-    
-    // Get earliest and latest dates in the dataset
-    let earliestDate = new Date();
-    let latestDate = new Date(0);
-    
-    data.forEach(week => {
-      if (!week.days || week.days.length === 0) return;
+    // For the current year, always show all months regardless of data availability
+    if (selectedYear === new Date().getFullYear()) {
+      // Find the first week index containing data for the current year
+      let firstWeekOfYear = 0;
+      let lastWeekOfYear = data.length - 1;
       
-      week.days.forEach(day => {
-        if (day.fullDate) {
+      // Find first week containing January
+      for (let i = 0; i < data.length; i++) {
+        if (!data[i].days || data[i].days.length === 0) continue;
+        
+        for (const day of data[i].days) {
+          if (!day.fullDate) continue;
+          
           const date = new Date(day.fullDate);
-          if (date < earliestDate) earliestDate = date;
-          if (date > latestDate) latestDate = date;
+          if (date.getFullYear() === selectedYear && date.getMonth() === 0) {
+            firstWeekOfYear = i;
+            break;
+          }
         }
-      });
-    });
+        
+        if (firstWeekOfYear > 0) break;
+      }
+      
+      // For current year, always display all 12 months regardless of current month
+      // Calculate available width from first week to last week
+      const availableWidth = lastWeekOfYear - firstWeekOfYear;
+      
+      // Distribute all 12 months evenly across the available width
+      for (let i = 0; i < 12; i++) {
+        // Calculate position based on the fraction of the year
+        const position = firstWeekOfYear + Math.floor((i / 11) * availableWidth);
+        
+        // Ensure position is within bounds
+        const finalPosition = Math.max(firstWeekOfYear, Math.min(position, data.length - 1));
+        
+        monthPositions.push({
+          month: months[i],
+          offset: finalPosition
+        });
+      }
+      
+      return monthPositions;
+    }
     
-    // Scan through the weeks to find the first occurrence of each month
+    // For past years, use the existing algorithm
+    // Create a map of month to first week containing that month
+    const monthWeeks = new Map<number, number>();
+    
+    // Scan all weeks to find the first occurrence of each month in the selected year
     data.forEach((week, weekIndex) => {
       if (!week.days || week.days.length === 0) return;
       
-      const firstDay = week.days[0];
-      if (!firstDay.fullDate) return;
-      
-      const date = new Date(firstDay.fullDate);
-      const month = date.getMonth();
-      
-      // If we haven't seen this month yet, add it to our labels
-      if (!seenMonths.has(month)) {
-        monthPositions.push({
-          month: months[month],
-          offset: weekIndex
-        });
-        seenMonths.set(month, true);
+      for (const day of week.days) {
+        if (!day.fullDate) continue;
+        
+        const date = new Date(day.fullDate);
+        if (date.getFullYear() === selectedYear) {
+          const month = date.getMonth();
+          
+          // If we haven't recorded this month yet, store its week index
+          if (!monthWeeks.has(month)) {
+            monthWeeks.set(month, weekIndex);
+          }
+        }
       }
     });
     
-    // For current year, ensure April is displayed as the last month
-    const currentMonth = new Date().getMonth();
-    const currentYear = new Date().getFullYear();
-    
-    if (selectedYear === currentYear && currentMonth === 3) { // April is month 3 (0-indexed)
-      if (!seenMonths.has(currentMonth)) {
-        // Add April at the end
-        monthPositions.push({
-          month: 'Apr',
-          offset: data.length - 1
-        });
-      } else {
-        // Make sure April is the last visible month label
-        const aprilIndex = monthPositions.findIndex(m => m.month === 'Apr');
-        if (aprilIndex >= 0) {
-          const april = monthPositions[aprilIndex];
-          // Move April to the end if it's not already the last month
-          if (aprilIndex < monthPositions.length - 1) {
-            monthPositions.splice(aprilIndex, 1);
-            monthPositions.push({
-              month: 'Apr',
-              offset: data.length - 1
-            });
+    // If we found any months, create the month labels
+    if (monthWeeks.size > 0) {
+      // For each month from January to December
+      for (let i = 0; i < 12; i++) {
+        // If we found this month in the data, use its actual position
+        if (monthWeeks.has(i)) {
+          monthPositions.push({
+            month: months[i],
+            offset: monthWeeks.get(i)!
+          });
+        } else {
+          // Month not found in data - estimate its position
+          
+          // Try to find the previous and next available months
+          let prevMonth = i - 1;
+          let nextMonth = i + 1;
+          let prevWeek = -1;
+          let nextWeek = -1;
+          
+          // Find nearest previous month with data
+          while (prevMonth >= 0 && !monthWeeks.has(prevMonth)) {
+            prevMonth--;
           }
+          if (prevMonth >= 0) {
+            prevWeek = monthWeeks.get(prevMonth)!;
+          }
+          
+          // Find nearest next month with data
+          while (nextMonth < 12 && !monthWeeks.has(nextMonth)) {
+            nextMonth++;
+          }
+          if (nextMonth < 12) {
+            nextWeek = monthWeeks.get(nextMonth)!;
+          }
+          
+          // Calculate estimated week position
+          let estimatedWeek;
+          if (prevWeek >= 0 && nextWeek >= 0) {
+            // Interpolate between previous and next month
+            const prevMonths = i - prevMonth;
+            const totalMonths = nextMonth - prevMonth;
+            const totalWeeks = nextWeek - prevWeek;
+            estimatedWeek = prevWeek + Math.round((prevMonths / totalMonths) * totalWeeks);
+          } else if (prevWeek >= 0) {
+            // Estimate based on previous month (add ~4 weeks per month)
+            estimatedWeek = prevWeek + ((i - prevMonth) * 4);
+          } else if (nextWeek >= 0) {
+            // Estimate based on next month (subtract ~4 weeks per month)
+            estimatedWeek = nextWeek - ((nextMonth - i) * 4);
+          } else {
+            // We couldn't find any months with data (unlikely to happen)
+            estimatedWeek = Math.floor(data.length / 12) * i;
+          }
+          
+          // Ensure the estimated week is within bounds
+          estimatedWeek = Math.max(0, Math.min(estimatedWeek, data.length - 1));
+          
+          monthPositions.push({
+            month: months[i],
+            offset: estimatedWeek
+          });
         }
+      }
+    } else {
+      // No months found for this year - create evenly distributed month labels
+      const weeksPerMonth = data.length / 12;
+      for (let i = 0; i < 12; i++) {
+        const offset = Math.min(Math.floor(i * weeksPerMonth), data.length - 1);
+        monthPositions.push({
+          month: months[i],
+          offset: offset
+        });
       }
     }
     
@@ -446,8 +531,9 @@ export const ContributionCalendar = ({ calendarData }: ContributionCalendarProps
     <GlassCard className="w-full glass-calendar relative rounded-lg overflow-hidden">
       <GlassCardContent className="py-5 px-5">
         {loading ? (
-          <div className="absolute inset-0 bg-background/50 backdrop-blur-[1px] z-10 flex items-center justify-center">
-            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+          <div className="absolute inset-0 bg-background/60 backdrop-blur-[2px] z-10 flex flex-col items-center justify-center">
+            <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-primary mb-3"></div>
+            <p className="text-sm font-medium">Loading contribution data...</p>
           </div>
         ) : null}
         
@@ -519,26 +605,56 @@ export const ContributionCalendar = ({ calendarData }: ContributionCalendarProps
             {/* Calendar component */}
             <div className="w-full">
               {/* Month labels */}
-              <div className="flex w-full">
+              <div className="flex w-full mb-2 pt-1">
                 <div className="w-[30px]"></div> {/* Space for day labels */}
                 <div className="flex-1 grid grid-flow-col auto-cols-fr">
-                  {monthLabels.map((label, i) => (
-                    <div 
-                      key={i} 
-                      className="text-xs text-muted-foreground font-normal"
-                      style={{ 
-                        gridColumnStart: label.offset + 1,
-                        gridColumnEnd: "span 1" 
-                      }}
-                    >
-                      {label.month}
-                    </div>
-                  ))}
+                  {monthLabels.map((label, i) => {
+                    // For current year, adjust visibility criteria to ensure more months are visible
+                    const prevLabel = i > 0 ? monthLabels[i-1] : null;
+                    const isCurrentYear = selectedYear === new Date().getFullYear();
+                    
+                    // Use a lower threshold for current year to show more months
+                    const tooClose = prevLabel && (label.offset - prevLabel.offset) < (isCurrentYear ? 4 : 2);
+                    
+                    // Important months that should always be visible
+                    const isImportantMonth = ['Jan', 'Apr', 'Jul', 'Oct'].includes(label.month);
+                    const shouldDisplay = !tooClose || isImportantMonth;
+                    
+                    return (
+                      <div 
+                        key={i} 
+                        className="text-xs font-medium relative"
+                        style={{ 
+                          gridColumnStart: label.offset + 1,
+                          gridColumnEnd: "span 1"
+                        }}
+                      >
+                        <span 
+                          className={`absolute left-0 whitespace-nowrap ${shouldDisplay ? '' : 'opacity-0'}`}
+                          style={{ 
+                            color: (label.month === 'Jan' ? 'var(--primary)' : 
+                                   isImportantMonth ? 'var(--foreground)' : 'var(--muted-foreground)'),
+                            fontWeight: label.month === 'Jan' || isImportantMonth ? 'bold' : 'normal'
+                          }}
+                        >
+                          {label.month}
+                        </span>
+                        <div 
+                          className="h-0.5 bg-border/50 absolute left-0 bottom-0"
+                          style={{ 
+                            backgroundColor: label.month === 'Jan' ? 'var(--primary)' : '',
+                            width: label.month === 'Jan' ? '4px' : isImportantMonth ? '3px' : '2px',
+                            opacity: shouldDisplay ? 0.8 : 0.2
+                          }}
+                        ></div>
+                      </div>
+                    );
+                  })}
                 </div>
               </div>
               
               {/* Main calendar */}
-              <div className="flex w-full mt-1">
+              <div className="flex w-full mt-2">
                 {/* Day labels */}
                 <div className="flex flex-col gap-1 pt-2 pr-2 w-[30px] flex-shrink-0">
                   {daysOfWeek.map((day, index) => (
