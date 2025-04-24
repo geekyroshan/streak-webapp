@@ -52,8 +52,9 @@ interface ScheduleBulkCommitPayload {
   startDate: string;
   endDate: string;
   timeRange: {
-    start: string;
-    end: string;
+    start?: string;
+    end?: string;
+    times?: string[];
   };
   messageTemplate: string;
   filesToChange: string[];
@@ -172,44 +173,34 @@ export const streakService = {
     try {
       console.log(`Scheduling bulk commits from ${startDate} to ${endDate}`);
       
-      const response = await fetch(`${API_URL}/streak/schedule-bulk-commits`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('streak_token')}`
+      const response = await api.post('/streak/schedule-bulk-commits', {
+        repository: {
+          name: repositoryName,
+          owner
         },
-        body: JSON.stringify({
-          repository: {
-            name: repositoryName,
-            owner
-          },
-          dateRange: {
-            start: startDate,
-            end: endDate
-          },
-          timeRange,
-          messageTemplate,
-          filesToChange,
-          frequency,
-          customDays,
-          repositoryUrl
-        })
+        dateRange: {
+          start: startDate,
+          end: endDate
+        },
+        timeRange,
+        messageTemplate,
+        filesToChange,
+        frequency,
+        customDays,
+        repositoryUrl
       });
       
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}));
-        const errorMessage = errorData.message || 'Failed to schedule bulk commits';
-        console.error('Error scheduling bulk commits:', errorMessage);
-        throw new Error(errorMessage);
-      }
-      
-      return await response.json();
+      return response.data;
     } catch (error: any) {
       console.error('Error in scheduleBulkCommits:', error);
-      if (error.message.includes('Failed to fetch')) {
+      if (error.response) {
+        const errorMessage = error.response.data?.message || 'Failed to schedule bulk commits';
+        throw new Error(errorMessage);
+      } else if (error.request) {
         throw new Error('Network error: Unable to connect to server');
+      } else {
+        throw new Error(`Error: ${error.message}`);
       }
-      throw error;
     }
   },
   
@@ -278,6 +269,40 @@ export const streakService = {
         throw new Error(errorMessage);
       } else if (error.request) {
         throw new Error('No response from server. Please check your network connection.');
+      } else {
+        throw new Error(`Error: ${error.message}`);
+      }
+    }
+  },
+
+  // Add a method to get bulk schedules
+  getBulkSchedules: async () => {
+    try {
+      const response = await api.get('/streak/bulk-schedules');
+      return response.data.data.schedules;
+    } catch (error: any) {
+      if (error.response) {
+        const errorMessage = error.response.data?.message || 'Failed to fetch bulk schedules';
+        throw new Error(errorMessage);
+      } else if (error.request) {
+        throw new Error('Network error: Unable to connect to server');
+      } else {
+        throw new Error(`Error: ${error.message}`);
+      }
+    }
+  },
+  
+  // Add a method to cancel a bulk schedule
+  cancelBulkSchedule: async (scheduleId: string) => {
+    try {
+      const response = await api.delete(`/streak/bulk-schedules/${scheduleId}`);
+      return response.data;
+    } catch (error: any) {
+      if (error.response) {
+        const errorMessage = error.response.data?.message || 'Failed to cancel bulk schedule';
+        throw new Error(errorMessage);
+      } else if (error.request) {
+        throw new Error('Network error: Unable to connect to server');
       } else {
         throw new Error(`Error: ${error.message}`);
       }

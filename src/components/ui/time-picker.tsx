@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Clock } from 'lucide-react';
+import { Clock, Shuffle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
   Popover,
@@ -8,14 +8,26 @@ import {
 } from '@/components/ui/popover';
 import { Input } from '@/components/ui/input';
 import { cn } from '@/lib/utils';
+import { Badge } from '@/components/ui/badge';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 
 interface TimePickerProps {
   time: string;
   setTime: (time: string) => void;
   className?: string;
+  multiMode?: boolean;
+  times?: string[];
+  setTimes?: (times: string[]) => void;
 }
 
-export function TimePicker({ time, setTime, className }: TimePickerProps) {
+export function TimePicker({ 
+  time, 
+  setTime, 
+  className, 
+  multiMode = false, 
+  times = [], 
+  setTimes
+}: TimePickerProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [localHours, setLocalHours] = useState('12');
   const [localMinutes, setLocalMinutes] = useState('00');
@@ -46,8 +58,18 @@ export function TimePicker({ time, setTime, className }: TimePickerProps) {
     const formattedHours = hours.toString();
     const formattedMinutes = minutes.toString().padStart(2, '0');
     
-    // Set the time with formatted values
-    setTime(`${formattedHours}:${formattedMinutes} ${localPeriod}`);
+    const formattedTime = `${formattedHours}:${formattedMinutes} ${localPeriod}`;
+    
+    if (multiMode && setTimes) {
+      // In multi-mode, add the time to the array if it's not already there
+      if (!times.includes(formattedTime)) {
+        setTimes([...times, formattedTime]);
+      }
+    } else {
+      // In single-mode, just set the time
+      setTime(formattedTime);
+    }
+    
     setIsOpen(false);
   };
 
@@ -71,6 +93,44 @@ export function TimePicker({ time, setTime, className }: TimePickerProps) {
     setLocalPeriod(localPeriod === 'AM' ? 'PM' : 'AM');
   };
 
+  const generateRandomTimes = () => {
+    if (!setTimes) return;
+    
+    // Generate 5 random times between 9AM and 7PM (typical work hours)
+    const randomTimes = [];
+    for (let i = 0; i < 5; i++) {
+      // Generate random hour between 9AM and 7PM (9-19)
+      const hour = Math.floor(Math.random() * 11) + 9;
+      // Generate random minute (0-59)
+      const minute = Math.floor(Math.random() * 60);
+      
+      // Format the time
+      let formattedHour = hour;
+      let period = 'AM';
+      
+      if (hour >= 12) {
+        period = 'PM';
+        if (hour > 12) {
+          formattedHour = hour - 12;
+        }
+      }
+      
+      const formattedMinute = minute.toString().padStart(2, '0');
+      const formattedTime = `${formattedHour}:${formattedMinute} ${period}`;
+      
+      randomTimes.push(formattedTime);
+    }
+    
+    // Set the random times
+    setTimes(randomTimes);
+  };
+
+  const removeTime = (timeToRemove: string) => {
+    if (multiMode && setTimes) {
+      setTimes(times.filter(t => t !== timeToRemove));
+    }
+  };
+
   return (
     <Popover open={isOpen} onOpenChange={setIsOpen}>
       <PopoverTrigger asChild>
@@ -78,12 +138,14 @@ export function TimePicker({ time, setTime, className }: TimePickerProps) {
           variant="outline"
           className={cn(
             "w-full justify-start text-left font-normal",
-            !time && "text-muted-foreground",
+            !time && !times.length && "text-muted-foreground",
             className
           )}
         >
           <Clock className="mr-2 h-4 w-4" />
-          {time || "Select time"}
+          {multiMode ? 
+            (times.length ? `${times.length} times selected` : "Select times") : 
+            (time || "Select time")}
         </Button>
       </PopoverTrigger>
       <PopoverContent className="w-auto p-4">
@@ -122,12 +184,49 @@ export function TimePicker({ time, setTime, className }: TimePickerProps) {
             </Button>
           </div>
         </div>
+        
+        {multiMode && (
+          <div className="mt-4">
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button 
+                    variant="outline" 
+                    size="sm" 
+                    className="w-full"
+                    onClick={generateRandomTimes}
+                  >
+                    <Shuffle className="h-4 w-4 mr-2" />
+                    Generate Random Times
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>
+                  <p>Generate 5 random times between 9AM and 7PM</p>
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
+          </div>
+        )}
+        
+        {multiMode && times.length > 0 && (
+          <div className="mt-4">
+            <div className="text-xs mb-2">Selected Times:</div>
+            <div className="flex flex-wrap gap-2">
+              {times.map((t) => (
+                <Badge key={t} variant="secondary" className="cursor-pointer" onClick={() => removeTime(t)}>
+                  {t} <span className="ml-1">×</span>
+                </Badge>
+              ))}
+            </div>
+          </div>
+        )}
+        
         <div className="flex justify-end mt-4">
           <Button 
             size="sm"
             onClick={applyTimeChange}
           >
-            Set Time
+            {multiMode ? "Add Time" : "Set Time"}
           </Button>
         </div>
       </PopoverContent>

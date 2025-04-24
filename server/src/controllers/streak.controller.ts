@@ -1,7 +1,8 @@
 import { Request, Response, NextFunction } from 'express';
 import { GitHubService } from '../services/github.service';
-import Commit from '../models/commit.model';
+import Commit, { BulkCommitSchedule } from '../models/commit.model';
 import AppError from '../utils/appError';
+import schedulerService from '../services/scheduler.service';
 
 // Create a backdated commit
 export const createBackdatedCommit = async (req: Request, res: Response, next: NextFunction) => {
@@ -24,6 +25,8 @@ export const createBackdatedCommit = async (req: Request, res: Response, next: N
       return next(new AppError('Access token not available', 401));
     }
     
+    console.log(`[Controller] Creating backdated commit for ${dateTime}`);
+    
     // Create commit record
     const commitRecord = await Commit.create({
       user: user._id,
@@ -37,26 +40,44 @@ export const createBackdatedCommit = async (req: Request, res: Response, next: N
     
     // Execute the backdated commit
     const githubService = new GitHubService(user.accessToken);
-    const result = await githubService.createBackdatedCommit(
-      repositoryUrl,
-      filePath,
-      commitMessage,
-      dateTime,
-      content || ''
-    );
     
-    // Update commit record
-    commitRecord.status = 'completed';
-    await commitRecord.save();
-    
-    res.status(201).json({
-      status: 'success',
-      data: {
-        commit: commitRecord,
-        result
-      }
-    });
+    try {
+      console.log(`[Controller] Executing backdated commit ${commitRecord._id}`);
+      const result = await githubService.createBackdatedCommit(
+        repositoryUrl,
+        filePath,
+        commitMessage,
+        dateTime,
+        content || ''
+      );
+      
+      // Update commit record
+      commitRecord.status = 'completed';
+      await commitRecord.save();
+      
+      console.log(`[Controller] Backdated commit ${commitRecord._id} completed successfully`);
+      
+      res.status(201).json({
+        status: 'success',
+        data: {
+          commit: commitRecord,
+          result
+        }
+      });
+    } catch (error: any) {
+      console.error(`[Controller] Error executing backdated commit: ${error.message}`);
+      
+      // Update the commit record with error status
+      commitRecord.status = 'failed';
+      commitRecord.errorMessage = error.message;
+      await commitRecord.save();
+      
+      // Re-throw the error to be caught by the outer catch block
+      throw error;
+    }
   } catch (error: any) {
+    console.error(`[Controller] Error in createBackdatedCommit: ${error.message}`);
+    
     // If there was an error during commit creation, update the record
     if (req.body.commitId) {
       const commitRecord = await Commit.findById(req.body.commitId);
@@ -67,6 +88,85 @@ export const createBackdatedCommit = async (req: Request, res: Response, next: N
       }
     }
     
+    next(error);
+  }
+};
+
+// Schedule a single commit
+export const scheduleCommit = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const user = req.user;
+    const { 
+      repository, 
+      repositoryUrl, 
+      filePath, 
+      commitMessage, 
+      dateTime, 
+      content,
+      executeNow // Optional parameter to execute immediately
+    } = req.body;
+    
+    if (!repository || !repositoryUrl || !filePath || !commitMessage || !dateTime) {
+      return next(new AppError('Please provide all required fields', 400));
+    }
+    
+    if (!user.accessToken) {
+      return next(new AppError('Access token not available', 401));
+    }
+    
+    // Parse the date properly with timezone awareness
+    const parsedDateTime = new Date(dateTime);
+    
+    // Ensure we're using a valid date
+    if (isNaN(parsedDateTime.getTime())) {
+      return next(new AppError('Invalid date format', 400));
+    }
+    
+    console.log(`[Controller] Scheduling commit for ${dateTime} (${parsedDateTime.toISOString()}), isScheduled=true`);
+    
+    // Create a scheduled commit record
+    const commitRecord = await Commit.create({
+      user: user._id,
+      repository,
+      repositoryUrl,
+      filePath,
+      commitMessage,
+      dateTime: parsedDateTime,
+      scheduledTime: parsedDateTime,
+      status: 'pending',
+      isScheduled: true // Ensure this is explicitly set to true
+    });
+    
+    console.log(`[Controller] Created scheduled commit ${commitRecord._id} for ${parsedDateTime.toISOString()}, isScheduled=${commitRecord.isScheduled}`);
+    
+    // If executeNow is true, process the commit immediately
+    if (executeNow) {
+      try {
+        console.log(`[Controller] Executing scheduled commit immediately as requested`);
+        // @ts-ignore - TypeScript doesn't recognize _id type from Mongoose
+        const result = await schedulerService.processCommitById(commitRecord._id.toString());
+        
+        return res.status(201).json({
+          status: 'success',
+          data: {
+            // @ts-ignore - TypeScript doesn't recognize _id type from Mongoose
+            commit: await Commit.findById(commitRecord._id), // Get updated commit
+            executionResult: result
+          }
+        });
+      } catch (execError: any) {
+        console.error(`[Controller] Error executing commit immediately: ${execError.message}`);
+        // We'll still return success since the commit was scheduled
+      }
+    }
+    
+    res.status(201).json({
+      status: 'success',
+      data: {
+        commit: commitRecord
+      }
+    });
+  } catch (error) {
     next(error);
   }
 };
@@ -96,17 +196,21 @@ export const scheduleBulkCommits = async (req: Request, res: Response, next: Nex
   try {
     const user = req.user;
     const { 
-      repository, 
-      repositoryUrl, 
-      filePath, 
-      commitMessage, 
-      startDate, 
-      endDate,
-      daysOfWeek, // array of days to commit on (0-6, where 0 is Sunday)
-      content
+      repository,
+      dateRange,
+      timeRange,
+      messageTemplate,
+      filesToChange,
+      frequency,
+      customDays,
+      repositoryUrl
     } = req.body;
     
-    if (!repository || !repositoryUrl || !filePath || !commitMessage || !startDate || !endDate) {
+    // Validate required fields
+    if (!repository || !repository.name || !repository.owner || 
+        !dateRange || !dateRange.start || !dateRange.end || 
+        !timeRange || (!timeRange.times && (!timeRange.start || !timeRange.end)) || 
+        !messageTemplate || !filesToChange || !frequency) {
       return next(new AppError('Please provide all required fields', 400));
     }
     
@@ -114,71 +218,104 @@ export const scheduleBulkCommits = async (req: Request, res: Response, next: Nex
       return next(new AppError('Access token not available', 401));
     }
     
-    // Generate dates between start and end date
-    const start = new Date(startDate);
-    const end = new Date(endDate);
-    const dates = [];
+    // Construct the repository URL if not provided
+    const repoUrl = repositoryUrl || `https://github.com/${repository.owner}/${repository.name}`;
     
-    for (let dt = new Date(start); dt <= end; dt.setDate(dt.getDate() + 1)) {
-      // If daysOfWeek specified, only include those days
-      if (daysOfWeek && daysOfWeek.length > 0) {
-        if (daysOfWeek.includes(dt.getDay())) {
-          dates.push(new Date(dt));
-        }
-      } else {
-        dates.push(new Date(dt));
-      }
-    }
+    // Use the scheduler service to create the bulk commit schedule
+    const result = await schedulerService.scheduleBulkCommits(
+      user._id.toString(),
+      repository.name,
+      repoUrl,
+      new Date(dateRange.start),
+      new Date(dateRange.end),
+      timeRange,
+      messageTemplate,
+      filesToChange,
+      frequency,
+      customDays
+    );
     
-    // Create commit records for each date
-    const commitPromises = dates.map(date => {
-      return Commit.create({
-        user: user._id,
-        repository,
-        repositoryUrl,
-        filePath,
-        commitMessage,
-        dateTime: date,
-        status: 'pending'
-      });
-    });
-    
-    const commitRecords = await Promise.all(commitPromises);
-    
-    // Respond with scheduled commits
     res.status(201).json({
       status: 'success',
-      results: commitRecords.length,
       data: {
-        commits: commitRecords
+        bulkSchedule: result.bulkSchedule,
+        totalScheduled: result.totalScheduled
       }
     });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// Get user's bulk schedules
+export const getBulkSchedules = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const user = req.user;
     
-    // Process each commit asynchronously (no await to prevent blocking)
-    const githubService = new GitHubService(user.accessToken);
+    const schedules = await schedulerService.getUserBulkSchedules(user._id.toString());
     
-    commitRecords.forEach(async (commitRecord, index) => {
-      try {
-        // Add a small delay between requests to avoid rate limiting
-        setTimeout(async () => {
-          await githubService.createBackdatedCommit(
-            repositoryUrl,
-            filePath,
-            commitMessage,
-            dates[index].toISOString(),
-            content || ''
-          );
-          
-          commitRecord.status = 'completed';
-          await commitRecord.save();
-        }, index * 5000); // 5 second delay between commits
-      } catch (error: any) {
-        commitRecord.status = 'failed';
-        commitRecord.errorMessage = error.message;
-        await commitRecord.save();
+    res.status(200).json({
+      status: 'success',
+      results: schedules.length,
+      data: {
+        schedules
       }
     });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// Cancel a bulk schedule
+export const cancelBulkSchedule = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const { id } = req.params;
+    const user = req.user;
     
+    // Check if the schedule belongs to the user
+    const schedule = await BulkCommitSchedule.findOne({ _id: id, user: user._id });
+    
+    if (!schedule) {
+      return next(new AppError('Bulk schedule not found or not owned by you', 404));
+    }
+    
+    await schedulerService.cancelBulkSchedule(id);
+    
+    res.status(200).json({
+      status: 'success',
+      message: 'Bulk schedule cancelled successfully'
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// Cancel a pending commit
+export const cancelCommit = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const { id } = req.params;
+    const user = req.user;
+    
+    // Check if the commit belongs to the user
+    const commit = await Commit.findOne({ _id: id, user: user._id });
+    
+    if (!commit) {
+      return next(new AppError('Commit not found or not owned by you', 404));
+    }
+    
+    // Only pending commits can be cancelled
+    if (commit.status !== 'pending') {
+      return next(new AppError('Only pending commits can be cancelled', 400));
+    }
+    
+    commit.status = 'failed';
+    commit.errorMessage = 'Cancelled by user';
+    await commit.save();
+    
+    res.status(200).json({
+      status: 'success',
+      message: 'Commit cancelled successfully'
+    });
   } catch (error) {
     next(error);
   }

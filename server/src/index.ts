@@ -9,6 +9,7 @@ import streakRoutes from './routes/streak.routes';
 import contributionRoutes from './routes/contribution.routes';
 import { errorHandler } from './middleware/errorHandler';
 import { connectDatabase } from './config/database';
+import './services/scheduler.service'; // Initialize the scheduler
 
 // Load environment variables
 dotenv.config();
@@ -55,6 +56,7 @@ app.use(errorHandler);
 // Start server
 app.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);
+  console.log('Commit scheduler is running in the background');
 });
 
 export default app; 

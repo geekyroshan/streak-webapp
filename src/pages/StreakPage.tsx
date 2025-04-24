@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -18,7 +18,10 @@ import {
   Loader2,
   Globe,
   Lock,
-  CalendarIcon
+  CalendarIcon,
+  CalendarCheck,
+  Trash,
+  RefreshCcw
 } from 'lucide-react';
 import { useRepositories } from '@/hooks/use-repositories';
 import { useToast } from '@/hooks/use-toast';
@@ -32,7 +35,41 @@ import { Calendar as CalendarComponent } from '@/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { addDays, isBefore, isAfter, startOfDay, startOfWeek, endOfWeek, eachDayOfInterval } from 'date-fns';
 import { Switch } from '@/components/ui/switch';
-import { Label } from '@/components/ui/label';
+import { Label as UILabel } from '@/components/ui/label';
+import { DayPicker } from 'react-day-picker';
+
+const BulkDatePicker = ({ 
+  date, 
+  setDate, 
+  disabledDate,
+}: { 
+  date: Date | undefined; 
+  setDate: (date: Date | undefined) => void; 
+  disabledDate?: (date: Date) => boolean;
+}) => {
+  return (
+    <Popover>
+      <PopoverTrigger asChild>
+        <Button
+          variant={"outline"}
+          className="w-full justify-start text-left font-normal"
+        >
+          <CalendarIcon className="mr-2 h-4 w-4" />
+          {date ? format(date, "PPP") : <span>Pick a date</span>}
+        </Button>
+      </PopoverTrigger>
+      <PopoverContent className="w-auto p-0">
+        <DayPicker
+          mode="single"
+          selected={date}
+          onSelect={setDate}
+          disabled={disabledDate}
+          initialFocus
+        />
+      </PopoverContent>
+    </Popover>
+  );
+};
 
 const StreakPage = () => {
   const [selectedDate, setSelectedDate] = useState<Date | undefined>(new Date());
@@ -42,12 +79,14 @@ const StreakPage = () => {
   const [commitTime, setCommitTime] = useState('2:30 PM');
   const [isCreatingCommit, setIsCreatingCommit] = useState(false);
   const [isSchedulingCommit, setIsSchedulingCommit] = useState(false);
-  const [bulkStartDate, setBulkStartDate] = useState<Date | undefined>(new Date());
-  const [bulkEndDate, setBulkEndDate] = useState<Date | undefined>(addDays(new Date(), 7));
-  const [frequency, setFrequency] = useState<'daily' | 'weekdays' | 'weekends' | 'custom'>('daily');
-  const [selectedDays, setSelectedDays] = useState<number[]>([1, 3, 5]); // Monday, Wednesday, Friday
+  const [bulkStartDate, setBulkStartDate] = useState<Date | undefined>(undefined);
+  const [bulkEndDate, setBulkEndDate] = useState<Date | undefined>(undefined);
+  const [frequency, setFrequency] = useState<'daily' | 'weekdays' | 'weekends' | 'custom'>('weekdays');
+  const [selectedDays, setSelectedDays] = useState<number[]>([1, 2, 3, 4, 5]); // Monday-Friday by default
   const [isBulkScheduling, setIsBulkScheduling] = useState(false);
   const [messageTemplate, setMessageTemplate] = useState('Update documentation');
+  const [timeSelectionMode, setTimeSelectionMode] = useState<'single' | 'multiple'>('single');
+  const [selectedTimes, setSelectedTimes] = useState<string[]>([]);
   
   const { repositories, isLoading: isLoadingRepos, error: repoError } = useRepositories();
   const { 
@@ -314,6 +353,16 @@ const StreakPage = () => {
       return;
     }
     
+    // Make sure there's at least one time selected if in multiple mode
+    if (timeSelectionMode === 'multiple' && selectedTimes.length === 0) {
+      toast({
+        title: "Missing time selection",
+        description: "Please select at least one time or generate random times",
+        variant: "destructive"
+      });
+      return;
+    }
+    
     // Validate dates
     if (isBefore(bulkEndDate, bulkStartDate)) {
       toast({
@@ -338,17 +387,49 @@ const StreakPage = () => {
       const endDateStr = format(bulkEndDate, 'yyyy-MM-dd');
       
       // Get the time components
-      let timeComponents = commitTime.match(/(\d+):(\d+)\s*(AM|PM)/i);
-      let hours = parseInt(timeComponents?.[1] || "12");
-      const minutes = timeComponents?.[2] || "00";
-      const period = timeComponents?.[3]?.toUpperCase() || "PM";
+      let timeRange;
       
-      // Adjust hours for PM
-      if (period === "PM" && hours < 12) hours += 12;
-      if (period === "AM" && hours === 12) hours = 0;
-      
-      // Format time range
-      const formattedTime = `${hours.toString().padStart(2, '0')}:${minutes}:00`;
+      if (timeSelectionMode === 'single') {
+        // Single time mode - use the same time for start and end
+        let timeComponents = commitTime.match(/(\d+):(\d+)\s*(AM|PM)/i);
+        let hours = parseInt(timeComponents?.[1] || "12");
+        const minutes = timeComponents?.[2] || "00";
+        const period = timeComponents?.[3]?.toUpperCase() || "PM";
+        
+        // Adjust hours for PM
+        if (period === "PM" && hours < 12) hours += 12;
+        if (period === "AM" && hours === 12) hours = 0;
+        
+        // Format time range
+        const formattedTime = `${hours.toString().padStart(2, '0')}:${minutes}:00`;
+        
+        timeRange = {
+          start: formattedTime,
+          end: formattedTime // Same time for all commits
+        };
+      } else {
+        // Multiple times mode - collect all times into an array
+        // We need to convert to 24-hour format for the server
+        const times24h = selectedTimes.map(time => {
+          const match = time.match(/(\d+):(\d+)\s*(AM|PM)/i);
+          if (!match) return '12:00:00';
+          
+          let hours = parseInt(match[1]);
+          const minutes = match[2];
+          const period = match[3].toUpperCase();
+          
+          if (period === "PM" && hours < 12) hours += 12;
+          if (period === "AM" && hours === 12) hours = 0;
+          
+          return `${hours.toString().padStart(2, '0')}:${minutes}:00`;
+        });
+        
+        // If we have multiple times, pick random ones for each day
+        // The server will distribute these times across the scheduled days
+        timeRange = {
+          times: times24h
+        };
+      }
       
       // Calculate days in the range
       const dateRange = eachDayOfInterval({
@@ -375,6 +456,7 @@ const StreakPage = () => {
       });
       
       console.log(`Scheduling ${daysToCommit.length} commits...`);
+      console.log('Time range:', timeRange);
       
       // Schedule the bulk commits
       await streakService.scheduleBulkCommits({
@@ -382,10 +464,7 @@ const StreakPage = () => {
         owner: selectedRepo.owner.login,
         startDate: startDateStr,
         endDate: endDateStr,
-        timeRange: {
-          start: formattedTime,
-          end: formattedTime // Same time for all commits
-        },
+        timeRange: timeRange,
         messageTemplate: messageTemplate,
         filesToChange: [selectedFile],
         frequency: frequency,
@@ -424,6 +503,15 @@ const StreakPage = () => {
     } else {
       setSelectedDays([...selectedDays, day]);
     }
+  };
+  
+  // Calendar selection handlers (to fix type issues)
+  const handleStartDateSelect = (date: Date | undefined) => {
+    setBulkStartDate(date);
+  };
+  
+  const handleEndDateSelect = (date: Date | undefined) => {
+    setBulkEndDate(date);
   };
   
   return (
@@ -972,56 +1060,62 @@ const StreakPage = () => {
                   <div className="grid grid-cols-2 gap-4">
                     <div className="space-y-2">
                       <label className="text-sm font-medium">Start Date</label>
-                      <Popover>
-                        <PopoverTrigger asChild>
-                          <Button
-                            variant={"outline"}
-                            className="w-full justify-start text-left font-normal"
-                          >
-                            <CalendarIcon className="mr-2 h-4 w-4" />
-                            {bulkStartDate ? format(bulkStartDate, 'PPP') : <span>Pick a date</span>}
-                          </Button>
-                        </PopoverTrigger>
-                        <PopoverContent className="w-auto p-0">
-                          <Calendar
-                            mode="single"
-                            selected={bulkStartDate}
-                            onSelect={setBulkStartDate}
-                            disabled={(date) => isBefore(date, startOfDay(new Date()))}
-                            initialFocus
-                          />
-                        </PopoverContent>
-                      </Popover>
+                      <BulkDatePicker
+                        date={bulkStartDate}
+                        setDate={setBulkStartDate}
+                      />
                     </div>
                     
                     <div className="space-y-2">
                       <label className="text-sm font-medium">End Date</label>
-                      <Popover>
-                        <PopoverTrigger asChild>
-                          <Button
-                            variant={"outline"}
-                            className="w-full justify-start text-left font-normal"
-                          >
-                            <CalendarIcon className="mr-2 h-4 w-4" />
-                            {bulkEndDate ? format(bulkEndDate, 'PPP') : <span>Pick a date</span>}
-                          </Button>
-                        </PopoverTrigger>
-                        <PopoverContent className="w-auto p-0">
-                          <Calendar
-                            mode="single"
-                            selected={bulkEndDate}
-                            onSelect={setBulkEndDate}
-                            disabled={(date) => isBefore(date, bulkStartDate || startOfDay(new Date()))}
-                            initialFocus
-                          />
-                        </PopoverContent>
-                      </Popover>
+                      <BulkDatePicker
+                        date={bulkEndDate}
+                        setDate={setBulkEndDate}
+                        disabledDate={(date) => bulkStartDate ? isBefore(date, bulkStartDate) : false}
+                      />
                     </div>
                   </div>
                   
                   <div className="space-y-2">
-                    <label className="text-sm font-medium">Commit Time</label>
-                    <TimePicker time={commitTime} setTime={setCommitTime} />
+                    <div className="flex items-center justify-between">
+                      <label className="text-sm font-medium">Commit Time</label>
+                      <div className="flex items-center space-x-1">
+                        <Button 
+                          size="sm" 
+                          variant={timeSelectionMode === 'single' ? 'default' : 'outline'} 
+                          className="h-7 text-xs"
+                          onClick={() => setTimeSelectionMode('single')}
+                        >
+                          Single Time
+                        </Button>
+                        <Button 
+                          size="sm" 
+                          variant={timeSelectionMode === 'multiple' ? 'default' : 'outline'} 
+                          className="h-7 text-xs"
+                          onClick={() => setTimeSelectionMode('multiple')}
+                        >
+                          Multiple Times
+                        </Button>
+                      </div>
+                    </div>
+                    
+                    {timeSelectionMode === 'single' ? (
+                      <TimePicker time={commitTime} setTime={setCommitTime} />
+                    ) : (
+                      <TimePicker 
+                        time={commitTime} 
+                        setTime={setCommitTime} 
+                        multiMode={true} 
+                        times={selectedTimes} 
+                        setTimes={setSelectedTimes} 
+                      />
+                    )}
+                    
+                    <div className="text-xs text-muted-foreground">
+                      {timeSelectionMode === 'single' 
+                        ? "All commits will be scheduled at this time"
+                        : "Select multiple times or generate random times for varied activity patterns"}
+                    </div>
                   </div>
                   
                   <div className="space-y-2">
@@ -1084,7 +1178,7 @@ const StreakPage = () => {
                               checked={selectedDays.includes(day)}
                               onCheckedChange={() => toggleSelectedDay(day)}
                             />
-                            <Label htmlFor={`day-${day}`}>{label}</Label>
+                            <UILabel htmlFor={`day-${day}`}>{label}</UILabel>
                           </div>
                         ))}
                       </div>
@@ -1146,6 +1240,17 @@ const StreakPage = () => {
                         ) : (
                           'N/A'
                         )}
+                      </div>
+                    </div>
+                    
+                    <div className="space-y-2">
+                      <div className="text-sm text-muted-foreground">Time Settings:</div>
+                      <div className="font-medium">
+                        {timeSelectionMode === 'single' 
+                          ? commitTime 
+                          : selectedTimes.length > 0 
+                            ? `${selectedTimes.length} time${selectedTimes.length !== 1 ? 's' : ''} selected` 
+                            : 'No times selected'}
                       </div>
                     </div>
                     
