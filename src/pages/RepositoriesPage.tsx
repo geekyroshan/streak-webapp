@@ -1,5 +1,4 @@
-
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
@@ -14,7 +13,9 @@ import {
   ArrowUpDown,
   Plus,
   Check,
-  GitCommit
+  GitCommit,
+  Loader2,
+  AlertCircle
 } from 'lucide-react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { 
@@ -23,8 +24,11 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
+import { repoService } from '@/lib/api';
+import { format, parseISO, formatDistanceToNow } from 'date-fns';
 
-interface RepositoryCardProps {
+interface Repository {
+  id: number;
   name: string;
   description: string;
   stars: number;
@@ -32,11 +36,62 @@ interface RepositoryCardProps {
   language: string;
   languageColor: string;
   updatedAt: string;
-  isSelected?: boolean;
-  onToggleSelect: () => void;
   activityLevel: 'high' | 'medium' | 'low' | 'none';
   lastCommit: string;
+  htmlUrl: string;
+  owner: {
+    login: string;
+    avatarUrl: string;
+  };
 }
+
+interface RepositoryCardProps extends Repository {
+  isSelected?: boolean;
+  onToggleSelect: () => void;
+}
+
+// Language color map
+const languageColors: Record<string, string> = {
+  TypeScript: '#3178c6',
+  JavaScript: '#f1e05a',
+  Python: '#3572A5',
+  Java: '#b07219',
+  Go: '#00ADD8',
+  Rust: '#dea584',
+  PHP: '#4F5D95',
+  CSS: '#563d7c',
+  HTML: '#e34c26',
+  Ruby: '#701516',
+  Swift: '#ffac45',
+  Kotlin: '#F18E33',
+  Dart: '#00B4AB',
+  'C#': '#178600',
+  C: '#555555',
+  'C++': '#f34b7d',
+  Shell: '#89e051',
+  Markdown: '#083fa1'
+};
+
+// Activity level determination function
+const determineActivityLevel = (updatedAt: string): 'high' | 'medium' | 'low' | 'none' => {
+  const lastUpdate = new Date(updatedAt);
+  const now = new Date();
+  const diffInDays = Math.floor((now.getTime() - lastUpdate.getTime()) / (1000 * 60 * 60 * 24));
+  
+  if (diffInDays < 7) return 'high';
+  if (diffInDays < 30) return 'medium';
+  if (diffInDays < 90) return 'low';
+  return 'none';
+};
+
+// Format the last commit date to a human-readable string
+const formatLastCommit = (date: string): string => {
+  try {
+    return formatDistanceToNow(new Date(date), { addSuffix: true });
+  } catch (error) {
+    return 'Unknown';
+  }
+};
 
 const RepositoryCard = ({ 
   name, 
@@ -128,99 +183,57 @@ const RepositoryCard = ({
 
 const RepositoriesPage = () => {
   const [searchQuery, setSearchQuery] = useState('');
-  const [selectedRepos, setSelectedRepos] = useState<string[]>(['personal-website']);
+  const [selectedRepos, setSelectedRepos] = useState<string[]>([]);
+  const [repositories, setRepositories] = useState<Repository[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   
-  // Sample repository data for demonstration
-  const repositories = [
-    {
-      name: 'personal-website',
-      description: 'My personal website built with React and Next.js',
-      stars: 12,
-      forks: 4,
-      language: 'TypeScript',
-      languageColor: '#3178c6',
-      updatedAt: '2 days ago',
-      activityLevel: 'high' as const,
-      lastCommit: 'Yesterday'
-    },
-    {
-      name: 'api-service',
-      description: 'RESTful API service for data processing and analytics',
-      stars: 34,
-      forks: 11,
-      language: 'JavaScript',
-      languageColor: '#f1e05a',
-      updatedAt: '1 week ago',
-      activityLevel: 'medium' as const,
-      lastCommit: '3 days ago'
-    },
-    {
-      name: 'machine-learning-experiments',
-      description: 'Collection of machine learning experiments and tutorials',
-      stars: 87,
-      forks: 29,
-      language: 'Python',
-      languageColor: '#3572A5',
-      updatedAt: '3 days ago',
-      activityLevel: 'high' as const,
-      lastCommit: 'Today'
-    },
-    {
-      name: 'design-system',
-      description: 'Reusable component library for web applications',
-      stars: 53,
-      forks: 17,
-      language: 'TypeScript',
-      languageColor: '#3178c6',
-      updatedAt: '4 days ago',
-      activityLevel: 'low' as const,
-      lastCommit: '2 weeks ago'
-    },
-    {
-      name: 'algorithms',
-      description: 'Implementation of common algorithms and data structures',
-      stars: 41,
-      forks: 12,
-      language: 'Java',
-      languageColor: '#b07219',
-      updatedAt: '2 weeks ago',
-      activityLevel: 'low' as const,
-      lastCommit: '1 month ago'
-    },
-    {
-      name: 'mobile-app',
-      description: 'Cross-platform mobile application using React Native',
-      stars: 29,
-      forks: 8,
-      language: 'JavaScript',
-      languageColor: '#f1e05a',
-      updatedAt: '5 days ago',
-      activityLevel: 'medium' as const,
-      lastCommit: '1 week ago'
-    },
-    {
-      name: 'blog-posts',
-      description: 'Technical blog posts and articles on various programming topics',
-      stars: 15,
-      forks: 3,
-      language: 'Markdown',
-      languageColor: '#083fa1',
-      updatedAt: '1 month ago',
-      activityLevel: 'none' as const,
-      lastCommit: '2 months ago'
-    },
-    {
-      name: 'coding-challenges',
-      description: 'Solutions to various coding challenges and competitions',
-      stars: 8,
-      forks: 2,
-      language: 'Python',
-      languageColor: '#3572A5',
-      updatedAt: '3 weeks ago',
-      activityLevel: 'low' as const,
-      lastCommit: '3 weeks ago'
-    }
-  ];
+  useEffect(() => {
+    const fetchRepositories = async () => {
+      try {
+        setLoading(true);
+        const data = await repoService.getUserRepositories();
+        
+        // Transform API data to our Repository format
+        const formattedRepos: Repository[] = data.map((repo: any) => {
+          const activityLevel = determineActivityLevel(repo.updated_at);
+          return {
+            id: repo.id,
+            name: repo.name,
+            description: repo.description || '',
+            stars: repo.stargazers_count || 0,
+            forks: repo.forks_count || 0,
+            language: repo.language || '',
+            languageColor: languageColors[repo.language] || '#ccc',
+            updatedAt: format(new Date(repo.updated_at), 'MMM d, yyyy'),
+            activityLevel,
+            lastCommit: formatLastCommit(repo.pushed_at || repo.updated_at),
+            htmlUrl: repo.html_url,
+            owner: {
+              login: repo.owner?.login || '',
+              avatarUrl: repo.owner?.avatar_url || ''
+            }
+          };
+        });
+        
+        setRepositories(formattedRepos);
+        
+        // Select the first repository if none are selected
+        if (selectedRepos.length === 0 && formattedRepos.length > 0) {
+          setSelectedRepos([formattedRepos[0].name]);
+        }
+        
+        setLoading(false);
+      } catch (err: any) {
+        console.error('Failed to fetch repositories:', err);
+        setError(err.message || 'Failed to load repositories');
+        setLoading(false);
+      }
+    };
+    
+    fetchRepositories();
+  }, []);
+
   
   const filteredRepositories = repositories.filter(repo => 
     repo.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -284,37 +297,13 @@ const RepositoriesPage = () => {
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end">
-            <DropdownMenuItem>Last updated</DropdownMenuItem>
+            <DropdownMenuItem>Recently updated</DropdownMenuItem>
             <DropdownMenuItem>Name</DropdownMenuItem>
             <DropdownMenuItem>Stars</DropdownMenuItem>
             <DropdownMenuItem>Forks</DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
       </div>
-      
-      {selectedRepos.length > 0 && (
-        <div className="flex items-center gap-2 py-2">
-          <span className="text-sm text-muted-foreground">
-            {selectedRepos.length} {selectedRepos.length === 1 ? 'repository' : 'repositories'} selected:
-          </span>
-          <div className="flex flex-wrap gap-1">
-            {selectedRepos.map(repo => (
-              <Badge 
-                key={repo} 
-                variant="secondary" 
-                className="text-xs px-2 py-0.5"
-                onClick={() => toggleRepoSelection(repo)}
-              >
-                {repo}
-                <span className="ml-1 cursor-pointer">×</span>
-              </Badge>
-            ))}
-          </div>
-          <Button variant="ghost" size="sm" className="ml-auto text-xs h-7" onClick={() => setSelectedRepos([])}>
-            Clear selection
-          </Button>
-        </div>
-      )}
       
       <Tabs defaultValue="grid">
         <div className="flex justify-end mb-4">
@@ -337,77 +326,102 @@ const RepositoriesPage = () => {
           </TabsList>
         </div>
         
-        <TabsContent value="grid" className="mt-0">
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {filteredRepositories.map((repo, index) => (
-              <RepositoryCard
-                key={index}
-                {...repo}
-                isSelected={selectedRepos.includes(repo.name)}
-                onToggleSelect={() => toggleRepoSelection(repo.name)}
-              />
-            ))}
-            
-            {filteredRepositories.length === 0 && (
-              <div className="col-span-full p-8 text-center text-muted-foreground border rounded-md">
-                No repositories found matching '{searchQuery}'
-              </div>
-            )}
+        {loading ? (
+          <div className="flex items-center justify-center h-64">
+            <div className="flex flex-col items-center">
+              <Loader2 className="h-10 w-10 animate-spin text-primary mb-4" />
+              <p className="text-muted-foreground">Loading repositories...</p>
+            </div>
           </div>
-        </TabsContent>
-        
-        <TabsContent value="list" className="mt-0">
-          <div className="space-y-2">
-            {filteredRepositories.map((repo, index) => (
-              <div key={index} className="flex items-center justify-between p-4 border rounded-md">
-                <div className="flex-1">
-                  <div className="font-medium">{repo.name}</div>
-                  <div className="text-sm text-muted-foreground line-clamp-1">{repo.description}</div>
-                </div>
+        ) : error ? (
+          <div className="flex items-center justify-center h-64">
+            <div className="flex flex-col items-center">
+              <AlertCircle className="h-10 w-10 text-destructive mb-4" />
+              <p className="text-destructive font-medium">{error}</p>
+              <Button 
+                variant="outline" 
+                className="mt-4"
+                onClick={() => window.location.reload()}
+              >
+                Retry
+              </Button>
+            </div>
+          </div>
+        ) : (
+          <>
+            <TabsContent value="grid" className="mt-0">
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                {filteredRepositories.map((repo) => (
+                  <RepositoryCard
+                    key={repo.id}
+                    {...repo}
+                    isSelected={selectedRepos.includes(repo.name)}
+                    onToggleSelect={() => toggleRepoSelection(repo.name)}
+                  />
+                ))}
                 
-                <div className="flex items-center gap-4">
-                  <div className="text-sm hidden md:flex items-center gap-1.5">
-                    <div className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: repo.languageColor }} />
-                    <span>{repo.language}</span>
+                {filteredRepositories.length === 0 && !loading && (
+                  <div className="col-span-full p-8 text-center text-muted-foreground border rounded-md">
+                    No repositories found matching '{searchQuery}'
                   </div>
-                  
-                  <div className="flex items-center gap-4">
-                    <div className="flex items-center gap-1">
-                      <Star className="w-4 h-4" />
-                      <span>{repo.stars}</span>
+                )}
+              </div>
+            </TabsContent>
+            
+            <TabsContent value="list" className="mt-0">
+              <div className="space-y-2">
+                {filteredRepositories.map((repo) => (
+                  <div key={repo.id} className="flex items-center justify-between p-4 border rounded-md">
+                    <div className="flex-1">
+                      <div className="font-medium">{repo.name}</div>
+                      <div className="text-sm text-muted-foreground line-clamp-1">{repo.description}</div>
                     </div>
                     
-                    <div className="flex items-center gap-1">
-                      <GitFork className="w-4 h-4" />
-                      <span>{repo.forks}</span>
+                    <div className="flex items-center gap-4">
+                      <div className="text-sm hidden md:flex items-center gap-1.5">
+                        <div className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: repo.languageColor }} />
+                        <span>{repo.language}</span>
+                      </div>
+                      
+                      <div className="flex items-center gap-4">
+                        <div className="flex items-center gap-1">
+                          <Star className="w-4 h-4" />
+                          <span>{repo.stars}</span>
+                        </div>
+                        
+                        <div className="flex items-center gap-1">
+                          <GitFork className="w-4 h-4" />
+                          <span>{repo.forks}</span>
+                        </div>
+                      </div>
+                      
+                      <Button
+                        variant={selectedRepos.includes(repo.name) ? "default" : "outline"}
+                        size="sm"
+                        onClick={() => toggleRepoSelection(repo.name)}
+                      >
+                        {selectedRepos.includes(repo.name) ? (
+                          <>
+                            <Check className="h-4 w-4 mr-1" />
+                            Selected
+                          </>
+                        ) : (
+                          'Select'
+                        )}
+                      </Button>
                     </div>
                   </div>
-                  
-                  <Button
-                    variant={selectedRepos.includes(repo.name) ? "default" : "outline"}
-                    size="sm"
-                    onClick={() => toggleRepoSelection(repo.name)}
-                  >
-                    {selectedRepos.includes(repo.name) ? (
-                      <>
-                        <Check className="h-4 w-4 mr-1" />
-                        Selected
-                      </>
-                    ) : (
-                      'Select'
-                    )}
-                  </Button>
-                </div>
+                ))}
+                
+                {filteredRepositories.length === 0 && !loading && (
+                  <div className="p-8 text-center text-muted-foreground border rounded-md">
+                    No repositories found matching '{searchQuery}'
+                  </div>
+                )}
               </div>
-            ))}
-            
-            {filteredRepositories.length === 0 && (
-              <div className="p-8 text-center text-muted-foreground border rounded-md">
-                No repositories found matching '{searchQuery}'
-              </div>
-            )}
-          </div>
-        </TabsContent>
+            </TabsContent>
+          </>
+        )}
       </Tabs>
       
       <Card>
