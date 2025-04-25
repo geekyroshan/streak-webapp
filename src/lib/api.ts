@@ -33,8 +33,16 @@ export const authService = {
     // Clear any existing cookies
     document.cookie = 'jwt=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;';
     
-    // Redirect to GitHub auth with prompt=login parameter to force login screen
-    window.location.href = `${API_URL}/auth/github`;
+    // Get the base URL and API URL
+    const host = window.location.host;
+    const protocol = window.location.protocol;
+    const baseApiUrl = `${protocol}//${host}/api`;
+    
+    console.log('Initiating GitHub login flow');
+    console.log('API URL for auth:', `${baseApiUrl}/auth/github`);
+    
+    // Redirect to GitHub auth
+    window.location.href = `${baseApiUrl}/auth/github`;
   },
   logout: async () => {
     console.log('Client-side logout: Starting');

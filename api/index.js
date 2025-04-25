@@ -1,76 +1,55 @@
-// This is the main API handler file for Vercel serverless functions
-const express = require('express');
-const cors = require('cors');
-const cookieParser = require('cookie-parser');
-const mongoose = require('mongoose');
-
-// MongoDB connection
-let isConnected = false;
-const connectToDatabase = async () => {
-  if (isConnected) {
-    return;
+// Minimal handler for Vercel serverless function
+module.exports = async (req, res) => {
+  // Set CORS headers
+  res.setHeader('Access-Control-Allow-Credentials', 'true');
+  res.setHeader('Access-Control-Allow-Origin', '*');
+  res.setHeader('Access-Control-Allow-Methods', 'GET,OPTIONS,PATCH,DELETE,POST,PUT');
+  res.setHeader(
+    'Access-Control-Allow-Headers',
+    'X-CSRF-Token, X-Requested-With, Accept, Accept-Version, Content-Length, Content-MD5, Content-Type, Date, X-Api-Version, Authorization'
+  );
+  
+  if (req.method === 'OPTIONS') {
+    return res.status(200).end();
   }
   
   try {
-    const mongoURI = process.env.MONGODB_URI;
-    if (!mongoURI) {
-      throw new Error('MONGODB_URI is not defined');
+    // Log request details
+    console.log(`Request received: ${req.method} ${req.url}`);
+    console.log('Headers:', req.headers);
+    
+    // GitHub auth redirect handling
+    if (req.url.includes('/api/auth/github')) {
+      const githubClientId = process.env.GITHUB_CLIENT_ID;
+      if (!githubClientId) {
+        throw new Error('GitHub Client ID not configured');
+      }
+      
+      const host = req.headers.host || 'localhost';
+      const protocol = host.includes('localhost') ? 'http' : 'https';
+      const redirectUri = process.env.GITHUB_REDIRECT_URI || 
+        `${protocol}://${host}/api/auth/github/callback`;
+      
+      const githubAuthUrl = `https://github.com/login/oauth/authorize?client_id=${githubClientId}&redirect_uri=${encodeURIComponent(redirectUri)}&scope=user,repo`;
+      
+      console.log('Redirecting to GitHub:', githubAuthUrl);
+      return res.redirect(302, githubAuthUrl);
     }
     
-    await mongoose.connect(mongoURI, {
-      serverSelectionTimeoutMS: 5000,
-      socketTimeoutMS: 45000,
+    // Default response for other routes
+    return res.status(200).json({
+      status: 'success',
+      message: 'Simplified API is working',
+      environment: process.env.NODE_ENV || 'development',
+      timestamp: new Date().toISOString(),
+      route: req.url
     });
-    
-    isConnected = true;
-    console.log('Connected to MongoDB');
   } catch (error) {
-    console.error('MongoDB connection error:', error);
-    throw error;
-  }
-};
-
-// Create Express app
-const app = express();
-
-// CORS setup
-app.use(cors({
-  origin: function(origin, callback) {
-    // Allow all origins in production
-    return callback(null, true);
-  },
-  credentials: true
-}));
-
-app.use(express.json());
-app.use(cookieParser());
-
-// Simple test route
-app.get('/api', (req, res) => {
-  res.json({ message: 'API is working!' });
-});
-
-// Example auth route
-app.get('/api/auth/status', (req, res) => {
-  res.json({ isAuthenticated: false, message: 'Authentication check' });
-});
-
-// Export the serverless function handler
-module.exports = async (req, res) => {
-  // Connect to database
-  try {
-    await connectToDatabase();
-  } catch (error) {
-    return res.status(500).json({ error: 'Database connection failed' });
-  }
-  
-  // Process the request with Express
-  return new Promise((resolve, reject) => {
-    app(req, res, (err) => {
-      if (err) {
-        return reject(err);
-      }
-      resolve();
+    console.error('API Error:', error);
+    return res.status(500).json({
+      status: 'error',
+      message: error.message || 'Internal Server Error',
+      timestamp: new Date().toISOString()
     });
-  });
+  }
 }; 
