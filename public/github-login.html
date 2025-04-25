@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>GitHub Login</title>
+  <style>
+    body {
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
+      background-color: #0d1117;
+      color: #e6edf3;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      min-height: 100vh;
+      margin: 0;
+      padding: 20px;
+      text-align: center;
+    }
+    .container {
+      max-width: 600px;
+      background-color: #161b22;
+      border-radius: 6px;
+      padding: 40px;
+      box-shadow: 0 8px 24px rgba(0,0,0,0.2);
+    }
+    h1 {
+      font-size: 28px;
+      margin-bottom: 24px;
+      color: #58a6ff;
+    }
+    p {
+      font-size: 16px;
+      line-height: 1.6;
+      margin-bottom: 24px;
+      color: #c9d1d9;
+    }
+    .login-button {
+      display: inline-block;
+      background-color: #238636;
+      color: white;
+      font-weight: 600;
+      padding: 12px 24px;
+      border-radius: 6px;
+      text-decoration: none;
+      font-size: 16px;
+      transition: background-color 0.2s;
+      border: none;
+      cursor: pointer;
+      margin-top: 16px;
+    }
+    .login-button:hover {
+      background-color: #2ea043;
+    }
+    .error {
+      background-color: #3a0d03;
+      color: #f85149;
+      padding: 16px;
+      border-radius: 6px;
+      margin: 20px 0;
+      text-align: left;
+    }
+    .note {
+      font-size: 14px;
+      background-color: #2d333b;
+      padding: 16px;
+      border-radius: 6px;
+      margin-top: 32px;
+    }
+    .configure-link {
+      color: #58a6ff;
+      text-decoration: none;
+    }
+    .configure-link:hover {
+      text-decoration: underline;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>GitHub Streak Manager</h1>
+    <p>Log in with your GitHub account to manage your contribution streak</p>
+    
+    <div class="error">
+      <p><strong>API Error:</strong> The standard OAuth flow is not working because GitHub OAuth credentials are not properly configured.</p>
+      <p>As a workaround, you can try to log in directly with GitHub using the button below.</p>
+    </div>
+    
+    <a href="#" id="login-button" class="login-button">Log in with GitHub</a>
+    
+    <div class="note">
+      <p>If this direct login doesn't work, the application administrator needs to <a href="/github-setup.html" class="configure-link">configure GitHub OAuth credentials</a>.</p>
+    </div>
+  </div>
+
+  <script>
+    document.addEventListener('DOMContentLoaded', function() {
+      const loginButton = document.getElementById('login-button');
+      
+      // Add your GitHub OAuth App Client ID here (this is a public value)
+      // Replace this with your actual GitHub OAuth App Client ID
+      const clientId = 'YOUR_GITHUB_CLIENT_ID';
+      
+      // Set the OAuth URL
+      const githubOAuthUrl = `https://github.com/login/oauth/authorize?client_id=${clientId}&scope=user,repo`;
+      
+      // Set the button link
+      loginButton.href = githubOAuthUrl;
+      
+      // Add click event to validate before redirecting
+      loginButton.addEventListener('click', function(e) {
+        if (clientId === 'YOUR_GITHUB_CLIENT_ID') {
+          e.preventDefault();
+          alert('Please replace the placeholder Client ID with your actual GitHub OAuth App Client ID in the HTML file.');
+        }
+      });
+    });
+  </script>
+</body>
+</html> 

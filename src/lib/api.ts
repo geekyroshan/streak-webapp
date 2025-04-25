@@ -36,14 +36,13 @@ export const authService = {
     // For debugging
     console.log('Initiating GitHub login flow');
     
-    // Get GitHub Client ID from environment variables
-    const githubClientId = import.meta.env.VITE_GITHUB_CLIENT_ID;
-    
-    if (githubClientId) {
-      console.log('Using GitHub OAuth flow with client ID from environment');
-      window.location.href = `https://github.com/login/oauth/authorize?client_id=${githubClientId}&scope=user,repo`;
-    } else {
-      console.log('No GitHub Client ID found in environment, using API endpoint');
+    // Try to use the API-based login first 
+    try {
+      // Try the static login page first (which has better error handling)
+      window.location.href = '/github-login.html';
+    } catch (error) {
+      console.error('Error redirecting to login page:', error);
+      // Fallback to direct API endpoint
       window.location.href = '/api/auth/github';
     }
   },
