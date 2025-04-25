@@ -33,16 +33,20 @@ export const authService = {
     // Clear any existing cookies
     document.cookie = 'jwt=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;';
     
-    // Get the base URL and API URL
-    const host = window.location.host;
-    const protocol = window.location.protocol;
-    const baseApiUrl = `${protocol}//${host}/api`;
-    
+    // For debugging
     console.log('Initiating GitHub login flow');
-    console.log('API URL for auth:', `${baseApiUrl}/auth/github`);
     
-    // Redirect to GitHub auth
-    window.location.href = `${baseApiUrl}/auth/github`;
+    // Redirect directly to GitHub with client ID (simpler approach)
+    const githubClientId = import.meta.env.VITE_GITHUB_CLIENT_ID;
+    if (githubClientId) {
+      // If we have a client ID in the frontend env, use it directly
+      console.log('Using frontend GitHub Client ID');
+      window.location.href = `https://github.com/login/oauth/authorize?client_id=${githubClientId}&scope=user,repo`;
+    } else {
+      // Otherwise use our API endpoint which should handle this
+      console.log('Using API endpoint for GitHub auth');
+      window.location.href = `/api/auth/github`;
+    }
   },
   logout: async () => {
     console.log('Client-side logout: Starting');
