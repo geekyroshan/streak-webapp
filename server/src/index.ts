@@ -22,7 +22,13 @@ console.log('Redirect URI:', process.env.GITHUB_REDIRECT_URI);
 console.log('Client ID from config:', require('./config/github').githubConfig.clientId);
 
 // Connect to MongoDB
-connectDatabase();
+let dbConnected = false;
+async function ensureDbConnection() {
+  if (!dbConnected) {
+    await connectDatabase();
+    dbConnected = true;
+  }
+}
 
 const app = express();
 const PORT = process.env.PORT || 5000;
@@ -43,11 +49,32 @@ const allowedOrigins = process.env.ALLOWED_ORIGINS
 
 // Middleware
 app.use(cors({
-  origin: allowedOrigins,
+  origin: (origin, callback) => {
+    // Allow requests with no origin (like mobile apps or curl requests)
+    if (!origin) return callback(null, true);
+    
+    if (allowedOrigins.indexOf(origin) === -1) {
+      // Allow all origins in production for now
+      if (process.env.NODE_ENV === 'production') {
+        return callback(null, true);
+      }
+      
+      const msg = 'The CORS policy for this site does not allow access from the specified Origin.';
+      return callback(new Error(msg), false);
+    }
+    return callback(null, true);
+  },
   credentials: true
 }));
+
 app.use(express.json());
 app.use(cookieParser());
+
+// Connect to database before handling routes
+app.use(async (req, res, next) => {
+  await ensureDbConnection();
+  next();
+});
 
 // Routes
 app.use('/api/auth', authRoutes);
@@ -60,11 +87,17 @@ app.use('/api/github', githubRoutes);
 // Error handling middleware
 app.use(errorHandler);
 
-// Start server
-app.listen(PORT, () => {
-  console.log(`Server running on port ${PORT}`);
-  console.log(`CORS allowed origins: ${JSON.stringify(allowedOrigins)}`);
-  console.log('Commit scheduler is running in the background');
-});
+// Start server if not in serverless environment
+if (process.env.NODE_ENV !== 'production') {
+  app.listen(PORT, () => {
+    console.log(`Server running on port ${PORT}`);
+    console.log(`CORS allowed origins: ${JSON.stringify(allowedOrigins)}`);
+    console.log('Commit scheduler is running in the background');
+  });
+}
 
-export default app; 
+// For serverless function compatibility
+export default async (req: any, res: any, next?: any) => {
+  await ensureDbConnection();
+  return app(req, res, next);
+}; 
