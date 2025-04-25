@@ -133,7 +133,6 @@ export const ContributionCalendar = ({ calendarData }: ContributionCalendarProps
       try {
         setLoading(true);
         setError(null);
-        console.log('Fetching contribution data...');
         
         // Always fetch data for the entire calendar year
         let data;
@@ -142,10 +141,8 @@ export const ContributionCalendar = ({ calendarData }: ContributionCalendarProps
           ? format(new Date(), 'yyyy-MM-dd') // Today for current year
           : `${selectedYear}-12-31`;         // Dec 31 for past years
         
-        console.log(`Fetching contributions for date range: ${startDate} to ${endDate}`);
-          data = await contributionService.getUserContributions(startDate);
+        data = await contributionService.getUserContributions(startDate);
         
-        console.log('Contribution data received:', data);
         setContributionData(data);
         setLoading(false);
       } catch (error: any) {
@@ -165,7 +162,6 @@ export const ContributionCalendar = ({ calendarData }: ContributionCalendarProps
   
   // Create dummy data for testing purposes in development
   const createDummyData = () => {
-    console.log('Creating dummy data for testing...');
     const dummyData = {
       contributions: [],
       analysis: { gaps: [] }
@@ -202,11 +198,7 @@ export const ContributionCalendar = ({ calendarData }: ContributionCalendarProps
     if (!contributionData) return;
     
     try {
-      console.log('Processing contribution data for year:', selectedYear);
       const { contributions, analysis } = contributionData;
-      
-      // Log the original contributions count
-      console.log(`Total contributions before filtering: ${contributions?.length || 0}`);
       
       // Create a map of date to contribution count
       const contributionsByDate: Record<string, {count: number, color?: string}> = {};
@@ -221,7 +213,6 @@ export const ContributionCalendar = ({ calendarData }: ContributionCalendarProps
           
           // Skip scheduled contributions
           if (day.isScheduled) {
-            console.log(`Skipping scheduled contribution on ${day.date}`);
             return false;
           }
           
@@ -230,9 +221,6 @@ export const ContributionCalendar = ({ calendarData }: ContributionCalendarProps
           // Always filter by calendar year regardless of current year
             return contribDate.getFullYear() === selectedYear;
         });
-        
-        // Log filtered contributions
-        console.log(`Filtered contributions for year ${selectedYear}: ${filteredContributions.length}`);
         
         if (filteredContributions.length === 0) {
           console.warn(`No contributions found for year ${selectedYear}`);
@@ -271,8 +259,6 @@ export const ContributionCalendar = ({ calendarData }: ContributionCalendarProps
       const endOfWeek = new Date(endDate);
       const endDay = endDate.getDay();
       endOfWeek.setDate(endDate.getDate() + (6 - endDay)); // Move to next Saturday
-      
-      console.log('Building calendar grid from', startOfWeek.toISOString(), 'to', endOfWeek.toISOString());
       
       // Calculate number of weeks to display
       const totalDays = Math.round((endOfWeek.getTime() - startOfWeek.getTime()) / (1000 * 60 * 60 * 24)) + 1;
@@ -327,7 +313,6 @@ export const ContributionCalendar = ({ calendarData }: ContributionCalendarProps
         calendarData.push(weekData);
       }
       
-      console.log('Calendar data processed. Weeks:', calendarData.length);
       setProcessedCalendarData(calendarData);
     } catch (error: any) {
       console.error('Error processing contribution data:', error);
@@ -519,7 +504,6 @@ export const ContributionCalendar = ({ calendarData }: ContributionCalendarProps
   const handleYearChange = (year: number) => {
     if (year === selectedYear) return;
     
-    console.log(`Changing year from ${selectedYear} to ${year}`);
     setLoading(true);
     setSelectedYear(year);
     

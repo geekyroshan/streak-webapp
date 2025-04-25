@@ -27,18 +27,23 @@ connectDatabase();
 const app = express();
 const PORT = process.env.PORT || 5000;
 
+// Setup allowed origins for CORS
+const allowedOrigins = process.env.ALLOWED_ORIGINS 
+  ? process.env.ALLOWED_ORIGINS.split(',') 
+  : [
+      'http://localhost:8080',
+      'http://localhost:8081',
+      'http://localhost:5173',
+      'http://localhost:3000',
+      'http://127.0.0.1:8080',
+      'http://127.0.0.1:8081',
+      'http://127.0.0.1:5173',
+      'http://127.0.0.1:3000'
+    ];
+
 // Middleware
 app.use(cors({
-  origin: [
-    'http://localhost:8080',
-    'http://localhost:8081',
-    'http://localhost:5173',
-    'http://localhost:3000',
-    'http://127.0.0.1:8080',
-    'http://127.0.0.1:8081',
-    'http://127.0.0.1:5173',
-    'http://127.0.0.1:3000'
-  ],
+  origin: allowedOrigins,
   credentials: true
 }));
 app.use(express.json());
@@ -58,6 +63,7 @@ app.use(errorHandler);
 // Start server
 app.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);
+  console.log(`CORS allowed origins: ${JSON.stringify(allowedOrigins)}`);
   console.log('Commit scheduler is running in the background');
 });
 

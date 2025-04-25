@@ -36,9 +36,7 @@ export const GlobalMissedDaysProvider = ({ children }: { children: ReactNode }) 
   
   // Debug: Log when repo changes
   useEffect(() => {
-    if (selectedRepo) {
-      console.log('GlobalMissedDaysContext: Repository changed to', selectedRepo.name);
-    }
+    // Remove console.log('GlobalMissedDaysContext: Repository changed to', selectedRepo.name);
   }, [selectedRepo, updateCounter]);
   
   return (

@@ -82,12 +82,9 @@ export const BackdatingCard = () => {
       lookbackDate.setMonth(lookbackDate.getMonth() - lookbackMonths);
       const lookbackDateStr = lookbackDate.toISOString().split('T')[0]; // YYYY-MM-DD format
       
-      console.log(`Fetching contributions since: ${lookbackDateStr} (${lookbackMonths} months ago)`);
-      
       // Fetch contribution data with the specified lookback period
       // Add ignoreCurrentStreak=true to ensure we get gaps from before the current streak
       const url = `/contributions?since=${lookbackDateStr}&ignoreCurrentStreak=true&includeAllGaps=true`;
-      console.log(`Using API URL: ${url}`);
       
       const response = await api.get(url);
       const data = response.data.data;
@@ -96,8 +93,6 @@ export const BackdatingCard = () => {
       
       // Format gaps as missed days
       if (analysis && analysis.gaps) {
-        console.log(`Found ${analysis.gaps.length} total gaps in contribution history`);
-        
         const formattedMissedDays = analysis.gaps.map((dateStr: string) => {
           const date = parseISO(dateStr);
           const daysAgo = Math.ceil(Math.abs(new Date().getTime() - date.getTime()) / (1000 * 60 * 60 * 24));
@@ -133,28 +128,23 @@ export const BackdatingCard = () => {
         
         // Display up to 10 missed days
         if (formattedMissedDays.length > 0) {
-          console.log(`Displaying ${Math.min(formattedMissedDays.length, 10)} missed days out of ${formattedMissedDays.length} total gaps found`);
           // Update the global context with all missed days
           setMissedDays(formattedMissedDays);
         } else {
           // If no gaps found with current lookback, try looking back even further automatically
           if (lookbackMonths < 12) {
-            console.log("No gaps found in recent history, looking back further automatically");
             // Recursively call with a longer lookback
             fetchMissedDays(12);
             return;
           } else if (lookbackMonths < 24 && analysis.gaps.length === 0) {
-            console.log("No gaps found in last year, looking back even further");
             // Try with a 2-year lookback
             fetchMissedDays(24);
             return;
           } else {
-            console.log("No gaps found even with extended lookback");
             setMissedDays([]);
           }
         }
       } else {
-        console.warn("No gap analysis data returned from API");
         setMissedDays([]);
       }
       
@@ -170,13 +160,11 @@ export const BackdatingCard = () => {
   // Use the fetchMissedDays function in useEffect
   useEffect(() => {
     // Start with a 12-month lookback by default to get gaps from before the current streak
-    console.log('Initializing BackdatingCard with 12-month lookback');
     fetchMissedDays(12);
     
     // After initial load, try with a longer period if no gaps were found
     const checkForOlderGaps = setTimeout(() => {
       if (missedDays.length === 0 && !loading && !error) {
-        console.log('No gaps found with initial load, trying 24-month lookback');
         fetchMissedDays(24);
       }
     }, 5000); // Wait 5 seconds after initial load

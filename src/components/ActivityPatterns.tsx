@@ -50,15 +50,11 @@ export const ActivityPatterns = () => {
           // Get data for the selected week
           const weekStart = format(startOfWeek(selectedWeek, { weekStartsOn: 0 }), 'yyyy-MM-dd');
           const weekEnd = format(endOfWeek(selectedWeek, { weekStartsOn: 0 }), 'yyyy-MM-dd');
-          console.log(`Fetching activity data for week: ${weekStart} to ${weekEnd}`);
           activityData = await contributionService.getActivityPatterns(weekStart, weekEnd);
         } else {
           // Get all-time data
-          console.log('Fetching all-time activity data');
           activityData = await contributionService.getActivityPatterns();
         }
-        
-        console.log('Activity data received:', activityData);
         
         if (activityData && activityData.dayOfWeekActivity) {
           // Process day of week data
@@ -68,20 +64,16 @@ export const ActivityPatterns = () => {
             value: activityData.dayOfWeekActivity[index] || 0
           }));
           
-          console.log('Processed day of week data:', dayData);
           setDayOfWeekData(dayData);
           
           // Set time of day data from the API response
           setTimeOfDayData(activityData.timeOfDayActivity || []);
-          console.log('Time of day data:', activityData.timeOfDayActivity);
           
           // Check if there are any contributions in this period
           const totalDayContributions = dayData.reduce((sum, item) => sum + item.value, 0);
           const totalTimeContributions = activityData.timeOfDayActivity?.reduce((sum: number, item: any) => sum + item.value, 0) || 0;
           
           const hasAnyContributions = totalDayContributions > 0 || totalTimeContributions > 0;
-          console.log(`Total day contributions: ${totalDayContributions}, Total time contributions: ${totalTimeContributions}`);
-          console.log(`Has contributions: ${hasAnyContributions}`);
           
           setHasContributions(hasAnyContributions);
         } else {

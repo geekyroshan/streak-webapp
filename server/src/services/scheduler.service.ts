@@ -45,16 +45,30 @@ function generateRandomTimeInRange(date: Date, startTime: string, endTime: strin
 
 class SchedulerService {
   private schedulerJob: cron.ScheduledTask | null = null;
+  private enabled: boolean;
 
   constructor() {
-    // Initialize the scheduler
-    this.init();
+    // Check if scheduler should be enabled from environment variables
+    this.enabled = process.env.SCHEDULER_ENABLED !== 'false';
+    
+    // Initialize the scheduler if enabled
+    if (this.enabled) {
+      this.init();
+    } else {
+      console.log('Scheduler is disabled based on environment settings');
+    }
   }
 
   /**
    * Initialize the scheduler
    */
   init(): void {
+    // Skip initialization if explicitly disabled
+    if (!this.enabled) {
+      console.log('Scheduler initialization skipped (disabled)');
+      return;
+    }
+    
     console.log('Initializing commit scheduler service...');
     
     // Run every minute to check for scheduled commits
@@ -69,9 +83,13 @@ class SchedulerService {
    * Process all scheduled commits that are due
    */
   async processScheduledCommits(): Promise<void> {
+    // Prevent execution if the scheduler is disabled
+    if (!this.enabled) {
+      return;
+    }
+    
     try {
       const now = new Date();
-      console.log(`[Scheduler] Starting scheduled commit processing at ${now.toISOString()}`);
       
       // Get all pending commits with isScheduled flag, regardless of scheduledTime first
       const allPendingScheduledCommits = await Commit.find({
@@ -79,12 +97,9 @@ class SchedulerService {
         isScheduled: true
       }).sort({ scheduledTime: 1 }).limit(20);
       
-      console.log(`[Scheduler] Found ${allPendingScheduledCommits.length} total pending scheduled commits`);
-      
       // Include timezone adjustment for IST (UTC+5:30)
       const ISTOffsetMinutes = 330; // 5 hours and 30 minutes
       const adjustedTimeForIST = new Date(now.getTime() + (ISTOffsetMinutes * 60 * 1000));
-      console.log(`[Scheduler] Current UTC time: ${now.toISOString()}, Adjusted for IST: ${adjustedTimeForIST.toISOString()}`);
       
       // Filter due commits based on the current time - with timezone awareness
       // Use BOTH the UTC now and the IST adjusted time for maximum compatibility
@@ -101,36 +116,17 @@ class SchedulerService {
         // Check if due by IST adjusted time
         const isDueByIST = commit.scheduledTime <= adjustedTimeForIST;
         
-        // Log the comparison to help with debugging
-        console.log(`[Scheduler] Commit ${commit._id}: Scheduled for ${scheduledTimeUtc}, Now UTC: ${nowUtc}, Now IST: ${adjustedTimeForIST.toISOString()}`);
-        console.log(`[Scheduler] Commit ${commit._id}: Is due by UTC: ${isDueByUtc}, Is due by IST: ${isDueByIST}`);
-        
         // Consider due if either check passes
         return isDueByUtc || isDueByIST;
       });
       
-      console.log(`[Scheduler] After timezone-aware filtering, found ${pendingCommits.length} due commits to process`);
-      
-      // Log overall query results for debugging
-      const allPendingCount = await Commit.countDocuments({ status: 'pending' });
-      const scheduledCount = await Commit.countDocuments({ isScheduled: true });
-      console.log(`[Scheduler] Debug stats - All pending: ${allPendingCount}, isScheduled: ${scheduledCount}`);
-      
       if (pendingCommits.length === 0) {
-        console.log('[Scheduler] No pending commits to process');
         return;
       }
-      
-      // Log details of commits to be processed
-      pendingCommits.forEach((commit, index) => {
-        console.log(`[Scheduler] Commit #${index + 1} - ID: ${commit._id}, Repository: ${commit.repository}, Path: ${commit.filePath}, DateTime: ${commit.dateTime.toISOString()}, ScheduledTime: ${commit.scheduledTime?.toISOString()}`);
-      });
       
       // Process each commit
       for (const commit of pendingCommits) {
         try {
-          console.log(`[Scheduler] Processing commit ${commit._id}`);
-          
           // Find the user who owns this commit to get their access token
           const user = await User.findById(commit.user);
           
@@ -150,19 +146,15 @@ class SchedulerService {
             continue;
           }
           
-          console.log(`[Scheduler] Found user ${user._id} with access token for commit ${commit._id}`);
-          
           // Create GitHub service with user's token
           const githubService = new GitHubService(user.accessToken);
           
           // Mark commit as being processed
           commit.processedAt = new Date();
           await commit.save();
-          console.log(`[Scheduler] Marked commit ${commit._id} as being processed at ${commit.processedAt.toISOString()}`);
           
           // Execute the commit
-          console.log(`[Scheduler] Executing commit to GitHub: ${commit.repositoryUrl}, path: ${commit.filePath}`);
-          const result = await githubService.createBackdatedCommit(
+          await githubService.createBackdatedCommit(
             commit.repositoryUrl,
             commit.filePath,
             commit.commitMessage,
@@ -170,68 +162,56 @@ class SchedulerService {
             '' // Content will be generated by the GitHub service
           );
           
-          console.log(`[Scheduler] Successfully executed commit ${commit._id}, GitHub result:`, result);
-          
           // Update commit status
           commit.status = 'completed';
           await commit.save();
           
-          console.log(`[Scheduler] Successfully processed commit ${commit._id}`);
         } catch (error: any) {
           console.error(`[Scheduler] Error processing commit ${commit._id}:`, error);
-          console.error(`[Scheduler] Error stack:`, error.stack);
           
           // Update commit with error
           commit.status = 'failed';
           commit.errorMessage = error.message || 'Unknown error during commit processing';
           await commit.save();
-          
-          console.error(`[Scheduler] Marked commit ${commit._id} as failed with error: ${commit.errorMessage}`);
         }
       }
-      
-      console.log(`[Scheduler] Completed scheduled commit processing at ${new Date().toISOString()}`);
       
       // Check if any bulk schedules need to be marked as completed
       await this.updateBulkScheduleStatuses();
       
     } catch (error: any) {
       console.error('[Scheduler] Error in processScheduledCommits:', error);
-      console.error('[Scheduler] Error stack:', error.stack);
     }
   }
-  
+
   /**
-   * Update the status of bulk schedules based on their commits
+   * Update the status of bulk schedules
    */
   async updateBulkScheduleStatuses(): Promise<void> {
     try {
-      // Find active bulk schedules
-      const activeSchedules = await BulkCommitSchedule.find({ 
-        status: 'active'
-      });
+      // Find all active bulk schedules
+      const activeSchedules = await BulkCommitSchedule.find({ status: 'active' });
       
       for (const schedule of activeSchedules) {
-        // Check if all commits for this schedule are completed or failed
+        // Check if all commits are completed or failed
         const pendingCommits = await Commit.countDocuments({
           _id: { $in: schedule.commits },
           status: 'pending'
         });
         
         if (pendingCommits === 0) {
-          // All commits have been processed
+          // All commits are processed, mark the schedule as completed
           schedule.status = 'completed';
           await schedule.save();
-          console.log(`Bulk schedule ${schedule._id} marked as completed`);
         }
       }
     } catch (error) {
-      console.error('Error in updateBulkScheduleStatuses:', error);
+      console.error('[Scheduler] Error updating bulk schedule statuses:', error);
     }
   }
-  
+
   /**
-   * Generate scheduled commit dates based on criteria
+   * Generate dates for commits based on frequency
    */
   generateCommitDates(
     startDate: Date,
@@ -240,11 +220,15 @@ class SchedulerService {
     customDays?: number[]
   ): Date[] {
     const dates: Date[] = [];
+    
+    // Clone dates to avoid modifying the originals
     const start = new Date(startDate);
     const end = new Date(endDate);
     
-    // Ensure dates are set to midnight for consistent comparison
+    // Make sure start date is at the beginning of the day
     start.setHours(0, 0, 0, 0);
+    
+    // Make sure end date is at the end of the day
     end.setHours(23, 59, 59, 999);
     
     for (let date = new Date(start); date <= end; date.setDate(date.getDate() + 1)) {
@@ -440,8 +424,6 @@ class SchedulerService {
           }
         }
       );
-      
-      console.log(`Bulk schedule ${scheduleId} cancelled`);
     } catch (error) {
       console.error('Error in cancelBulkSchedule:', error);
       throw error;
@@ -480,28 +462,51 @@ class SchedulerService {
   isRunning(): boolean {
     return this.schedulerJob !== null;
   }
+  
+  /**
+   * Check if the scheduler is enabled
+   */
+  isEnabled(): boolean {
+    return this.enabled;
+  }
+  
+  /**
+   * Enable or disable the scheduler
+   */
+  setEnabled(enabled: boolean): void {
+    // No change needed if the status is the same
+    if (this.enabled === enabled) {
+      return;
+    }
+    
+    this.enabled = enabled;
+    
+    if (enabled) {
+      // Start the scheduler if it was disabled
+      this.init();
+      console.log('Scheduler has been enabled');
+    } else if (this.schedulerJob) {
+      // Stop the scheduler if it was running
+      this.stop();
+      console.log('Scheduler has been disabled');
+    }
+  }
 
   /**
    * Process a specific commit by ID
    */
   async processCommitById(commitId: string): Promise<{ success: boolean; message: string }> {
     try {
-      console.log(`[Scheduler] Manually processing commit ID: ${commitId}`);
-      
       // Find the commit
       const commit = await Commit.findById(commitId);
       
       if (!commit) {
-        console.error(`[Scheduler] Commit not found: ${commitId}`);
         return { success: false, message: 'Commit not found' };
       }
       
       if (commit.status !== 'pending') {
-        console.log(`[Scheduler] Commit ${commitId} is not pending (current status: ${commit.status})`);
         return { success: false, message: `Commit is already ${commit.status}` };
       }
-      
-      console.log(`[Scheduler] Found commit ${commitId} for repository ${commit.repository}`);
       
       // Find the user who owns this commit to get their access token
       const user = await User.findById(commit.user);
@@ -522,27 +527,21 @@ class SchedulerService {
         return { success: false, message: 'User access token not found' };
       }
       
-      console.log(`[Scheduler] Found user ${user._id} with access token for commit ${commit._id}`);
-      
       // Create GitHub service with user's token
       const githubService = new GitHubService(user.accessToken);
       
       // Mark commit as being processed
       commit.processedAt = new Date();
       await commit.save();
-      console.log(`[Scheduler] Marked commit ${commit._id} as being processed at ${commit.processedAt.toISOString()}`);
       
       // Execute the commit
-      console.log(`[Scheduler] Executing commit to GitHub: ${commit.repositoryUrl}, path: ${commit.filePath}`);
-      const result = await githubService.createBackdatedCommit(
+      await githubService.createBackdatedCommit(
         commit.repositoryUrl,
         commit.filePath,
         commit.commitMessage,
         commit.dateTime.toISOString(),
         '' // Content will be generated by the GitHub service
       );
-      
-      console.log(`[Scheduler] Successfully executed commit ${commit._id}`);
       
       // Update commit status
       commit.status = 'completed';
@@ -551,7 +550,6 @@ class SchedulerService {
       return { success: true, message: 'Commit processed successfully' };
     } catch (error: any) {
       console.error(`[Scheduler] Error manually processing commit ${commitId}:`, error);
-      console.error(`[Scheduler] Error stack:`, error.stack);
       return { 
         success: false, 
         message: `Error processing commit: ${error.message}` 

@@ -1,7 +1,8 @@
 import axios from 'axios';
 
-// API base URL
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5002/api';
+// API base URL with proper environment variable handling
+const API_URL = import.meta.env.VITE_API_URL || 
+  (window.location.hostname === 'localhost' ? 'http://localhost:5002/api' : '/api');
 
 // Create axios instance with credentials
 const api = axios.create({

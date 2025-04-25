@@ -295,8 +295,6 @@ const StreakPage = () => {
         .padStart(2, "0")}:${minutes}:00`;
       const dateTime = `${formattedDate}T${formattedTime}Z`;
       
-      console.log("Formatted dateTime:", dateTime);
-      
       await streakService.createBackdatedCommit({
         // Original fields for compatibility
         repositoryName: selectedRepo.name, 
@@ -449,8 +447,6 @@ const StreakPage = () => {
         .toString()
         .padStart(2, "0")}:${minutes}:00`;
       const dateTime = `${formattedDate}T${formattedTime}Z`;
-      
-      console.log("Formatted dateTime:", dateTime);
       
       await streakService.scheduleCommit({
         repositoryName: selectedRepo.name,
@@ -635,9 +631,6 @@ const StreakPage = () => {
         }
       });
       
-      console.log(`Scheduling ${daysToCommit.length} commits...`);
-      console.log("Time range:", timeRange);
-      
       // Generate a preview before submitting
       generateCommitPreview();
 
@@ -732,26 +725,13 @@ const StreakPage = () => {
 
   // Add a preview generation function for bulk commits
   const generateCommitPreview = () => {
-    console.log("Manual preview generation triggered");
-    console.log("Generating preview with:", {
-      bulkStartDate,
-      bulkEndDate,
-      files: filesToChange.length > 0 ? filesToChange : [selectedFile],
-      templates: messageTemplates.split('\n').filter(t => t.trim()),
-      frequency,
-      selectedDays,
-      times: timeSelectionMode === 'single' ? [commitTime] : selectedTimes
-    });
-    
     if (!bulkStartDate || !bulkEndDate) {
-      console.log("Early return: Missing dates", { bulkStartDate, bulkEndDate });
       return [];
     }
     
     // Files to use for preview - either the selected files list or current selected file
     const files = filesToChange.length > 0 ? filesToChange : [selectedFile];
     if (files.length === 0 || !files[0]) {
-      console.log("Early return: Missing files", { files, selectedFile, filesToChange });
       return [];
     }
     
@@ -772,15 +752,7 @@ const StreakPage = () => {
       }
     });
     
-    console.log("Days to commit:", { 
-      total: dateRange.length,
-      filtered: daysToCommit.length,
-      frequency,
-      selectedDays: frequency === 'custom' ? selectedDays : 'n/a'
-    });
-    
     if (daysToCommit.length === 0) {
-      console.log("Early return: No days match the frequency criteria");
       return [];
     }
     
@@ -794,18 +766,8 @@ const StreakPage = () => {
     // Get message templates
     const templates = messageTemplates.split('\n').filter(t => t.trim());
     if (templates.length === 0) {
-      console.log("Early return: No message templates", { messageTemplates });
       return [];
     }
-    
-    console.log("Ready to generate preview:", {
-      daysCount: daysToCommit.length,
-      firstDay: daysToCommit[0]?.toISOString(),
-      lastDay: daysToCommit[daysToCommit.length - 1]?.toISOString(),
-      times,
-      templateCount: templates.length,
-      fileCount: files.length
-    });
     
     // Generate preview (up to 5 entries)
     const previewCount = Math.min(5, daysToCommit.length);
@@ -829,11 +791,8 @@ const StreakPage = () => {
       });
     }
     
-    console.log("Generated preview:", preview);
-    
     // Explicitly update the state - ensure we're creating a new array
     setCommitPreview([...preview]);
-    console.log("State updated with preview items:", preview.length);
     return preview;
   };
   
@@ -934,11 +893,6 @@ const StreakPage = () => {
       }
     }
   }, [selectedRepoId, selectedFile, repositories]);
-  
-  // Log when commitPreview changes
-  useEffect(() => {
-    console.log("commitPreview state updated:", { length: commitPreview.length, preview: commitPreview });
-  }, [commitPreview]);
   
   return (
     <div className="space-y-6">
@@ -1531,8 +1485,8 @@ const StreakPage = () => {
                             )?.name || "Not selected"
                           : "Not selected"}
                       </div>
-                    </div>
-
+                      </div>
+                      
                     <div className="space-y-2">
                       <div className="text-sm text-muted-foreground">
                         Date Range:
@@ -1545,8 +1499,8 @@ const StreakPage = () => {
                             )} to ${format(bulkEndDate, "MMM d, yyyy")}`
                           : "Not selected"}
                       </div>
-                    </div>
-
+                      </div>
+                      
                     <div className="space-y-2">
                       <div className="text-sm text-muted-foreground">
                         Frequency:
@@ -1654,14 +1608,12 @@ const StreakPage = () => {
                     </div>
                     
                     <div className="flex flex-col gap-2 mt-4">
-                      <Button
+                      <Button 
                         onClick={() => {
-                          console.log("Manual preview generation triggered");
                           // Generate preview and immediately update state with the returned data
                           const preview = generateCommitPreview();
                           // Force a state update by creating a new array to ensure rerenders
                           setCommitPreview([...preview]);
-                          console.log("Preview generation complete, state updated with", preview.length, "items");
                           
                           // Scroll to preview section
                           setTimeout(() => {
@@ -2080,12 +2032,10 @@ const StreakPage = () => {
                       variant="outline"
                       className="flex-1"
                       onClick={() => {
-                        console.log("Manual preview generation triggered");
                         // Generate preview and immediately update state with the returned data
                         const preview = generateCommitPreview();
                         // Force a state update by creating a new array to ensure rerenders
                         setCommitPreview([...preview]);
-                        console.log("Preview generation complete, state updated with", preview.length, "items");
                         
                         // Scroll to preview section
                         setTimeout(() => {
@@ -2106,7 +2056,7 @@ const StreakPage = () => {
                       Generate Preview
                     </Button>
                     
-                    <Button
+                    <Button 
                       className="flex-1"
                       onClick={handleBulkSchedule}
                       disabled={

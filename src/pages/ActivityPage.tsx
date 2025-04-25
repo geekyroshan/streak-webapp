@@ -251,9 +251,7 @@ const ActivityPage = () => {
         try {
           activitiesData = await githubActivityService.getUserActivities(20, page, activityTypeParam, repoParam);
         } catch (apiError) {
-          console.error('API Error:', apiError);
           // Use mock data when API fails
-          console.log('Using mock data as fallback');
           
           // Generate mock activities based on filters
           const mockActivities = generateMockActivities(

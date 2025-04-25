@@ -63,9 +63,6 @@ const ActivityCalendar: React.FC<ActivityCalendarProps> = ({ onClose }) => {
         try {
           response = await githubActivityService.getContributionStats(startDate);
         } catch (err) {
-          console.error('API Error in ActivityCalendar:', err);
-          console.log('Using mock calendar data as fallback');
-          
           // Just create mock data directly without throwing an error
           // This prevents showing error UI and shows mock data instead
           const days = getDaysInMonth(currentMonth);
