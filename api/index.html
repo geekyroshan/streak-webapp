@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>GitHub Streak Manager API</title>
+  <style>
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
+      margin: 0;
+      padding: 40px;
+      color: #333;
+      background: #f7f7f7;
+      line-height: 1.6;
+    }
+    .container {
+      max-width: 800px;
+      margin: 0 auto;
+      background: white;
+      padding: 30px;
+      border-radius: 8px;
+      box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+    }
+    h1 {
+      margin-top: 0;
+      color: #333;
+      border-bottom: 2px solid #eaeaea;
+      padding-bottom: 10px;
+    }
+    code {
+      background: #f4f4f4;
+      padding: 3px 5px;
+      border-radius: 3px;
+      font-family: monospace;
+    }
+    .endpoint {
+      margin-bottom: 20px;
+      padding: 15px;
+      background: #f9f9f9;
+      border-left: 4px solid #4CAF50;
+    }
+    .note {
+      margin-top: 30px;
+      padding: 15px;
+      background: #fffde7;
+      border-left: 4px solid #FFC107;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>GitHub Streak Manager API</h1>
+    <p>This is the API server for the GitHub Streak Manager application.</p>
+    
+    <div class="endpoint">
+      <h3>Health Check</h3>
+      <p>Path: <code>/api</code></p>
+      <p>Method: <code>GET</code></p>
+      <p>Returns basic API status information.</p>
+    </div>
+    
+    <div class="endpoint">
+      <h3>GitHub Authentication</h3>
+      <p>Path: <code>/api/auth/github</code></p>
+      <p>Method: <code>GET</code></p>
+      <p>Initiates the GitHub OAuth authentication flow.</p>
+    </div>
+    
+    <div class="note">
+      <p><strong>Note:</strong> Please access the main application at the root URL instead of this API documentation page.</p>
+      <p>The API is primarily designed for the frontend application to consume and not for direct use.</p>
+    </div>
+  </div>
+</body>
+</html> 
