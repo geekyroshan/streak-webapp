@@ -23,10 +23,48 @@ api.interceptors.request.use(config => {
 
 // Auth services
 export const authService = {
-  login: () => window.location.href = `${API_URL}/auth/github`,
-  logout: async () => {
-    await api.get('/auth/logout');
+  login: () => {
+    // Clear any existing token before redirecting to GitHub auth
     localStorage.removeItem('token');
+    localStorage.removeItem('github_token');
+    localStorage.removeItem('user');
+    
+    // Clear any existing cookies
+    document.cookie = 'jwt=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;';
+    
+    // Redirect to GitHub auth with prompt=login parameter to force login screen
+    window.location.href = `${API_URL}/auth/github`;
+  },
+  logout: async () => {
+    console.log('Client-side logout: Starting');
+    console.log('Cookies before logout:', document.cookie);
+    
+    try {
+      // Call server logout endpoint and wait for it to complete
+      await api.get('/auth/logout');
+      console.log('Server logout successful');
+      
+      // Clear all localStorage items
+      console.log('Clearing localStorage items');
+      localStorage.removeItem('token');
+      localStorage.removeItem('github_token');
+      localStorage.removeItem('user');
+      
+      // No need to manually try clearing HTTP-only cookies - the server has done this
+      console.log('Cookies cleared by server');
+      
+      // Redirect to home page
+      console.log('Redirecting to home page');
+      window.location.href = '/';
+    } catch (err) {
+      console.error('Error during logout:', err);
+      // Even if there was an error, still clear local storage
+      localStorage.removeItem('token');
+      localStorage.removeItem('github_token');
+      localStorage.removeItem('user');
+      // And redirect to login page to force re-authentication
+      window.location.href = '/login';
+    }
   },
   getCurrentUser: async () => {
     const response = await api.get('/auth/me');
