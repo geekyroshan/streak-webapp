@@ -690,4 +690,34 @@ export const userService = {
   }
 };
 
+export const githubFileService = {
+  // Get file content from GitHub repository
+  getFileContent: async (owner: string, repo: string, path: string) => {
+    try {
+      const response = await api.get(`/github/file-content?owner=${owner}&repo=${repo}&path=${path}`);
+      return response.data.data;
+    } catch (error: any) {
+      console.error('Error fetching file content:', error);
+      if (error.response) {
+        throw new Error(error.response.data?.message || 'Failed to fetch file content');
+      }
+      throw error;
+    }
+  },
+  
+  // Get repository contents (files and directories)
+  getRepoContents: async (owner: string, repo: string, path: string = '') => {
+    try {
+      const response = await api.get(`/github/repo-contents?owner=${owner}&repo=${repo}&path=${path}`);
+      return response.data.data;
+    } catch (error: any) {
+      console.error('Error fetching repository contents:', error);
+      if (error.response) {
+        throw new Error(error.response.data?.message || 'Failed to fetch repository contents');
+      }
+      throw error;
+    }
+  }
+};
+
 export default api; 

@@ -4,7 +4,9 @@ import {
   getGithubProfile, 
   getContributionStats,
   getRepositories,
-  exportActivityData
+  exportActivityData,
+  getFileContent,
+  getRepoContents
 } from '../controllers/github.controller';
 import { protect } from '../middleware/auth.middleware';
 
@@ -19,5 +21,7 @@ router.get('/profile', getGithubProfile);
 router.get('/stats', getContributionStats);
 router.get('/repositories', getRepositories);
 router.get('/export', exportActivityData);
+router.get('/file-content', getFileContent);
+router.get('/repo-contents', getRepoContents);
 
 export default router; 

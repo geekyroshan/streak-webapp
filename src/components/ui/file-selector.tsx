@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { FileEdit, Search, X, Info } from 'lucide-react';
+import { FileEdit, Search, X, Info, Loader2, Folder, File } from 'lucide-react';
 import {
   Dialog,
   DialogContent,
@@ -20,6 +20,7 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from '@/components/ui/tooltip';
+import { githubFileService } from '@/lib/api';
 
 interface FileSelectorProps {
   file: string;
@@ -29,51 +30,78 @@ interface FileSelectorProps {
   className?: string;
 }
 
+interface RepoFile {
+  name: string;
+  path: string;
+  type: string; // 'file' or 'dir'
+  size: number;
+  url: string;
+}
+
 export function FileSelector({ file, setFile, repository, repoOwner, className }: FileSelectorProps) {
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedFiles, setSelectedFiles] = useState<string[]>([]);
   const [customPath, setCustomPath] = useState('');
+  const [repoFiles, setRepoFiles] = useState<RepoFile[]>([]);
+  const [currentPath, setCurrentPath] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [dialogOpen, setDialogOpen] = useState(false);
   
-  // Combine recommended files (documentation) with common source files
-  const possibleFiles = [
-    // Documentation files (recommended, rarely in .gitignore)
+  // Common file types for fallback
+  const commonFiles = [
     'README.md',
-    'CONTRIBUTING.md',
-    'LICENSE',
-    'CHANGELOG.md',
-    'docs/README.md',
-    'docs/index.md',
-    
-    // Source code files
-    'src/index.js',
-    'src/App.js',
-    'src/main.js',
-    'src/index.ts',
-    'src/App.tsx',
-    'src/components/Header.js',
-    'src/components/Footer.js',
-    'src/pages/Home.js',
-    'src/pages/About.js',
-    'src/utils/helpers.js',
-    'src/utils/format.js',
-    
-    // Configuration files
     'package.json',
     'tsconfig.json',
-    '.eslintrc.js',
-    'webpack.config.js',
-    'vite.config.js',
-    
-    // Other common files
-    'public/index.html',
-    'styles/main.css',
-    'assets/style.css'
+    '.gitignore',
+    'src/index.js',
+    'src/index.ts',
+    'src/App.js',
+    'src/App.tsx',
   ];
   
-  // Filter files based on search term
-  const filteredFiles = possibleFiles.filter(f => 
-    f.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  // Load repository files when dialog opens
+  const handleDialogOpen = async (open: boolean) => {
+    setDialogOpen(open);
+    if (open && repository && repoOwner) {
+      await loadRepositoryContents();
+    }
+  };
+  
+  // Load repository contents for a specific path
+  const loadRepositoryContents = async (path: string = '') => {
+    if (!repository || !repoOwner) return;
+    
+    setIsLoading(true);
+    setError(null);
+    
+    try {
+      const contents = await githubFileService.getRepoContents(repoOwner, repository, path);
+      setRepoFiles(contents);
+      setCurrentPath(path);
+    } catch (err: any) {
+      console.error('Error loading repository contents:', err);
+      setError(err.message || 'Failed to load repository contents');
+      setRepoFiles([]);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+  
+  // Handle navigation to a directory
+  const handleNavigateToDirectory = (dirPath: string) => {
+    loadRepositoryContents(dirPath);
+  };
+  
+  // Handle navigation to parent directory
+  const handleNavigateUp = () => {
+    if (!currentPath) return;
+    
+    const pathParts = currentPath.split('/');
+    pathParts.pop();
+    const parentPath = pathParts.join('/');
+    loadRepositoryContents(parentPath);
+  };
   
   const handleSelectFile = (filePath: string) => {
     setFile(filePath);
@@ -94,8 +122,23 @@ export function FileSelector({ file, setFile, repository, repoOwner, className }
     setFile('');
   };
   
+  // Filter files based on search term
+  const getFilteredFiles = () => {
+    if (repoFiles.length > 0) {
+      return repoFiles.filter(f => 
+        f.name.toLowerCase().includes(searchTerm.toLowerCase())
+      );
+    } else {
+      return commonFiles
+        .filter(f => f.toLowerCase().includes(searchTerm.toLowerCase()))
+        .map(f => ({ name: f, path: f, type: 'file', size: 0, url: '' }));
+    }
+  };
+  
+  const filteredFiles = getFilteredFiles();
+  
   return (
-    <Dialog>
+    <Dialog open={dialogOpen} onOpenChange={handleDialogOpen}>
       <div className={cn("relative", className)}>
         <Input 
           value={file}
@@ -161,30 +204,63 @@ export function FileSelector({ file, setFile, repository, repoOwner, className }
             </div>
           </div>
           
+          {currentPath && (
+            <div className="flex items-center space-x-2">
+              <Button 
+                variant="outline" 
+                size="sm" 
+                onClick={handleNavigateUp}
+                disabled={isLoading}
+              >
+                ../ (Up)
+              </Button>
+              <div className="text-sm text-muted-foreground">
+                Current: /{currentPath}
+              </div>
+            </div>
+          )}
+          
           <div className="max-h-60 overflow-y-auto rounded-md border">
-            <div className="p-1">
-              {filteredFiles.length > 0 ? (
-                filteredFiles.map((filePath) => (
+            {isLoading ? (
+              <div className="flex justify-center items-center h-20">
+                <Loader2 className="h-5 w-5 animate-spin mr-2" />
+                <span>Loading files...</span>
+              </div>
+            ) : error ? (
+              <div className="p-4 text-sm text-red-500">
+                Error: {error}
+              </div>
+            ) : filteredFiles.length > 0 ? (
+              <div className="p-1">
+                {filteredFiles.map((fileItem) => (
                   <button
-                    key={filePath}
-                    onClick={() => handleSelectFile(filePath)}
+                    key={fileItem.path}
+                    onClick={() => fileItem.type === 'dir' 
+                      ? handleNavigateToDirectory(fileItem.path)
+                      : handleSelectFile(fileItem.path)
+                    }
                     className={cn(
-                      "w-full flex items-center justify-between p-2 text-left text-sm rounded-sm",
-                      file === filePath ? "bg-primary/10" : "hover:bg-muted"
+                      "w-full flex items-center p-2 text-left text-sm rounded-sm",
+                      fileItem.path === file ? "bg-primary/10" : "hover:bg-muted"
                     )}
                   >
-                    <span>{filePath}</span>
-                    {file === filePath && (
+                    {fileItem.type === 'dir' ? (
+                      <Folder className="h-4 w-4 mr-2 text-blue-500" />
+                    ) : (
+                      <File className="h-4 w-4 mr-2 text-gray-500" />
+                    )}
+                    <span>{fileItem.name}</span>
+                    {fileItem.path === file && (
                       <Badge variant="outline" className="ml-auto">Selected</Badge>
                     )}
                   </button>
-                ))
-              ) : (
-                <div className="p-2 text-sm text-muted-foreground">
-                  No files found matching your search.
-                </div>
-              )}
-            </div>
+                ))}
+              </div>
+            ) : (
+              <div className="p-2 text-sm text-muted-foreground">
+                No files found matching your search.
+              </div>
+            )}
           </div>
           
           <div className="space-y-2">
@@ -245,4 +321,4 @@ export function FileSelector({ file, setFile, repository, repoOwner, className }
       </DialogContent>
     </Dialog>
   );
-} 
+}

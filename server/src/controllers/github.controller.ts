@@ -227,4 +227,98 @@ export const exportActivityData = async (req: Request, res: Response, next: Next
   } catch (error) {
     next(error);
   }
+};
+
+// Get file content from GitHub repository
+export const getFileContent = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const { owner, repo, path } = req.query;
+    
+    if (!owner || !repo || !path) {
+      return next(new AppError('Owner, repo, and path are required', 400));
+    }
+    
+    const user = req.user;
+    
+    if (!user.accessToken) {
+      return next(new AppError('Access token not available', 401));
+    }
+    
+    // Get GitHub service
+    const githubService = new GitHubService(user.accessToken);
+    
+    // Get file content
+    const fileContent = await githubService.getFileContent(
+      owner as string, 
+      repo as string, 
+      path as string
+    );
+    
+    res.status(200).json({
+      status: 'success',
+      data: fileContent
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// Get repository contents (files and directories)
+export const getRepoContents = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const { owner, repo, path } = req.query;
+    
+    if (!owner || !repo) {
+      return next(new AppError('Owner and repo are required', 400));
+    }
+    
+    const user = req.user;
+    
+    if (!user.accessToken) {
+      return next(new AppError('Access token not available', 401));
+    }
+    
+    // Get GitHub service
+    const githubService = new GitHubService(user.accessToken);
+    
+    // GitHub API endpoint to get contents
+    const url = `https://api.github.com/repos/${owner}/${repo}/contents${path ? `/${path}` : ''}`;
+    
+    const response = await fetch(url, {
+      headers: {
+        Authorization: `token ${user.accessToken}`
+      }
+    });
+    
+    if (!response.ok) {
+      const errorData = await response.json();
+      return next(new AppError(errorData.message || 'Failed to fetch repository contents', response.status));
+    }
+    
+    const data = await response.json();
+    
+    // GitHub API returns either an array (for directories) or an object (for files)
+    const contents = Array.isArray(data) 
+      ? data.map(item => ({
+          name: item.name,
+          path: item.path,
+          type: item.type,
+          size: item.size,
+          url: item.html_url
+        })) 
+      : [{
+          name: data.name,
+          path: data.path,
+          type: data.type,
+          size: data.size,
+          url: data.html_url
+        }];
+    
+    res.status(200).json({
+      status: 'success',
+      data: contents
+    });
+  } catch (error) {
+    next(error);
+  }
 }; 

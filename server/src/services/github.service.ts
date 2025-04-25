@@ -1002,6 +1002,33 @@ export class GitHubService {
       );
     }
   }
+
+  /**
+   * Get file content from a repository
+   */
+  async getFileContent(owner: string, repo: string, path: string) {
+    try {
+      const response = await axios.get(
+        `${githubConfig.apiUrl}/repos/${owner}/${repo}/contents/${path}`,
+        {
+          headers: {
+            Authorization: `token ${this.token}`,
+            Accept: 'application/vnd.github.v3.raw'
+          }
+        }
+      );
+      
+      return {
+        content: response.data,
+        path: path
+      };
+    } catch (error: any) {
+      throw new AppError(
+        error.response?.data?.message || 'Failed to fetch file content',
+        error.response?.status || 500
+      );
+    }
+  }
 }
 
 /**
