@@ -288,7 +288,7 @@ class SchedulerService {
     startDate: Date,
     endDate: Date,
     timeRange: { start?: string, end?: string, times?: string[] },
-    messageTemplate: string,
+    messageTemplates: string[],
     filesToChange: string[],
     frequency: 'daily' | 'weekdays' | 'weekends' | 'custom',
     customDays?: number[]
@@ -314,7 +314,7 @@ class SchedulerService {
         startDate,
         endDate,
         timeRange,
-        messageTemplate,
+        messageTemplates,
         filesToChange,
         frequency,
         customDays,
@@ -340,6 +340,10 @@ class SchedulerService {
           scheduledTime = new Date(date);
           scheduledTime.setHours(12, 0, 0, 0);
         }
+        
+        // Select a random message template from the array
+        const randomTemplateIndex = Math.floor(Math.random() * messageTemplates.length);
+        const messageTemplate = messageTemplates[randomTemplateIndex];
         
         // Generate a commit message from the template
         const formattedDate = date.toLocaleDateString('en-US', { 

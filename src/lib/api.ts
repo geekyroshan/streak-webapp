@@ -96,6 +96,7 @@ interface ScheduleBulkCommitPayload {
   endDate: string;
   timeRange?: { startTime: string; endTime: string };
   messageTemplate?: string;
+  messageTemplates?: string[];
   filesToChange?: string[];
   frequency?: string;
   customDays?: number[];
@@ -204,6 +205,7 @@ export const streakService = {
     endDate,
     timeRange,
     messageTemplate,
+    messageTemplates,
     filesToChange,
     frequency,
     customDays,
@@ -223,6 +225,7 @@ export const streakService = {
         },
         timeRange,
         messageTemplate,
+        messageTemplates,
         filesToChange,
         frequency,
         customDays,

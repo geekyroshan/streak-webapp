@@ -35,6 +35,7 @@ import {
   CalendarCheck,
   Trash,
   RefreshCcw,
+  X,
 } from "lucide-react";
 import { useRepositories } from "@/hooks/use-repositories";
 import { useToast } from "@/hooks/use-toast";
@@ -152,7 +153,7 @@ const StreakPage = () => {
   const [commitMessage, setCommitMessage] = useState(
     "Update documentation with new API endpoints"
   );
-  const [selectedFile, setSelectedFile] = useState("docs/api-reference.md");
+  const [selectedFile, setSelectedFile] = useState<string>("docs/api-reference.md");
   const [commitTime, setCommitTime] = useState("2:30 PM");
   const [isCreatingCommit, setIsCreatingCommit] = useState(false);
   const [isSchedulingCommit, setIsSchedulingCommit] = useState(false);
@@ -497,13 +498,32 @@ const StreakPage = () => {
     if (
       !selectedRepoId ||
       !bulkStartDate ||
-      !bulkEndDate ||
-      !selectedFile ||
-      !messageTemplate
+      !bulkEndDate
     ) {
       toast({
         title: "Missing information",
         description: "Please fill in all required fields",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    // Check for files - either selectedFile or filesToChange must have values
+    if (!selectedFile && filesToChange.length === 0) {
+      toast({
+        title: "Missing file selection",
+        description: "Please select at least one file to modify",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    // Ensure we have at least one message template
+    const templates = messageTemplates.split('\n').filter(t => t.trim());
+    if (templates.length === 0) {
+      toast({
+        title: "Missing commit messages",
+        description: "Please provide at least one commit message template",
         variant: "destructive",
       });
       return;
@@ -617,16 +637,24 @@ const StreakPage = () => {
 
       console.log(`Scheduling ${daysToCommit.length} commits...`);
       console.log("Time range:", timeRange);
+      
+      // Generate a preview before submitting
+      generateCommitPreview();
 
-      // Schedule the bulk commits
+      // Get all files to change (either from the list or just the selected file)
+      const filesToSubmit = filesToChange.length > 0 
+        ? filesToChange 
+        : [selectedFile];
+
+      // Schedule the bulk commits with the array of message templates
       await streakService.scheduleBulkCommits({
         repositoryName: selectedRepo.name,
         owner: selectedRepo.owner.login,
         startDate: startDateStr,
         endDate: endDateStr,
         timeRange: timeRange,
-        messageTemplate: messageTemplate,
-        filesToChange: [selectedFile],
+        messageTemplates: templates, // Send all templates
+        filesToChange: filesToSubmit,
         frequency: frequency,
         customDays: frequency === "custom" ? selectedDays : undefined,
         repositoryUrl: selectedRepo.html_url,
@@ -693,21 +721,22 @@ const StreakPage = () => {
   // Functions to manage multiple files for bulk commits
   const addFileToList = () => {
     if (selectedFile && !filesToChange.includes(selectedFile)) {
-      setFilesToChange([...filesToChange, selectedFile]);
-      setSelectedFile('');
+      setFilesToChange((prev) => [...prev, selectedFile]);
+      setSelectedFile(""); // Clear selected file after adding
     }
   };
 
   const removeFileFromList = (index: number) => {
-    setFilesToChange(filesToChange.filter((_, i) => i !== index));
+    setFilesToChange((prev) => prev.filter((_, i) => i !== index));
   };
 
   // Add a preview generation function for bulk commits
   const generateCommitPreview = () => {
-    if (!bulkStartDate || !bulkEndDate || (!selectedFile && filesToChange.length === 0)) return;
+    if (!bulkStartDate || !bulkEndDate) return;
     
     // Files to use for preview - either the selected files list or current selected file
     const files = filesToChange.length > 0 ? filesToChange : [selectedFile];
+    if (files.length === 0 || !files[0]) return;
     
     // Filter days based on frequency
     const dateRange = eachDayOfInterval({
@@ -735,6 +764,7 @@ const StreakPage = () => {
     
     // Get message templates
     const templates = messageTemplates.split('\n').filter(t => t.trim());
+    if (templates.length === 0) return;
     
     // Generate preview (up to 5 entries)
     const previewCount = Math.min(5, daysToCommit.length);
@@ -1319,22 +1349,58 @@ const StreakPage = () => {
                 <div className="space-y-4">
                   <div className="space-y-2">
                     <label className="text-sm font-medium">
-                      File to Change
+                      Files to Change
                     </label>
-                    <FileSelector
-                      file={selectedFile}
-                      setFile={setSelectedFile}
-                      repository={
-                        repositories.find(
-                          (repo) => repo.id.toString() === selectedRepoId
-                        )?.name
-                      }
-                      repoOwner={
-                        repositories.find(
-                          (repo) => repo.id.toString() === selectedRepoId
-                        )?.owner?.login
-                      }
-                    />
+                    <div className="flex gap-2">
+                      <div className="flex-1">
+                        <FileSelector
+                          file={selectedFile}
+                          setFile={setSelectedFile}
+                          repository={
+                            repositories.find(
+                              (repo) => repo.id.toString() === selectedRepoId
+                            )?.name
+                          }
+                          repoOwner={
+                            repositories.find(
+                              (repo) => repo.id.toString() === selectedRepoId
+                            )?.owner?.login
+                          }
+                        />
+                      </div>
+                      <Button
+                        size="sm"
+                        onClick={addFileToList}
+                        disabled={!selectedFile}
+                        className="self-end"
+                      >
+                        Add to List
+                      </Button>
+                    </div>
+                    
+                    {filesToChange.length > 0 && (
+                      <div className="mt-2 border rounded-md p-2">
+                        <div className="text-sm font-medium mb-1">Selected Files:</div>
+                        <div className="space-y-1 max-h-32 overflow-y-auto">
+                          {filesToChange.map((file, index) => (
+                            <div key={index} className="flex items-center justify-between text-sm">
+                              <span className="truncate">{file}</span>
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => removeFileFromList(index)}
+                                className="h-6 w-6 p-0"
+                              >
+                                <X className="h-4 w-4" />
+                              </Button>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                    <div className="text-xs text-muted-foreground">
+                      Add one or more files to be modified with each commit
+                    </div>
                   </div>
 
                   <div className="space-y-2 mt-4">
@@ -1375,11 +1441,13 @@ const StreakPage = () => {
                     </div>
                   </div>
 
-                  <div className="border rounded-lg p-4 space-y-3 mt-4">
+                  <div className="border rounded-lg p-4 space-y-4 mt-4">
                     <h3 className="font-medium text-sm">Schedule Summary</h3>
 
-                    <div className="grid grid-cols-2 gap-2 text-sm">
-                      <div className="text-muted-foreground">Repository:</div>
+                    <div className="space-y-2">
+                      <div className="text-sm text-muted-foreground">
+                        Repository:
+                      </div>
                       <div className="font-medium">
                         {selectedRepoId
                           ? repositories.find(
@@ -1387,42 +1455,159 @@ const StreakPage = () => {
                             )?.name || "Not selected"
                           : "Not selected"}
                       </div>
+                    </div>
 
-                      <div className="text-muted-foreground">Date:</div>
-                      <div className="font-medium">
-                        {selectedDate
-                          ? format(selectedDate, "MMMM d, yyyy")
-                          : "Not selected"}
+                    <div className="space-y-2">
+                      <div className="text-sm text-muted-foreground">
+                        Date Range:
                       </div>
-
-                      <div className="text-muted-foreground">Time:</div>
-                      <div className="font-medium">{commitTime}</div>
-
-                      <div className="text-muted-foreground">File:</div>
                       <div className="font-medium">
-                        {selectedFile || "Not selected"}
+                        {bulkStartDate && bulkEndDate
+                          ? `${format(
+                              bulkStartDate,
+                              "MMM d, yyyy"
+                            )} to ${format(bulkEndDate, "MMM d, yyyy")}`
+                          : "Not selected"}
                       </div>
                     </div>
 
-                    <div className="mt-4">
+                    <div className="space-y-2">
+                      <div className="text-sm text-muted-foreground">
+                        Frequency:
+                      </div>
+                      <div className="font-medium capitalize">
+                        {frequency}
+                        {frequency === "custom" && selectedDays.length > 0 && (
+                          <span className="text-xs ml-2 text-muted-foreground">
+                            (
+                            {selectedDays
+                              .sort()
+                              .map(
+                                (day) =>
+                                  [
+                                    "Sun",
+                                    "Mon",
+                                    "Tue",
+                                    "Wed",
+                                    "Thu",
+                                    "Fri",
+                                    "Sat",
+                                  ][day]
+                              )
+                              .join(", ")}
+                            )
+                          </span>
+                        )}
+                      </div>
+                    </div>
+
+                    <div className="space-y-2">
+                      <div className="text-sm text-muted-foreground">
+                        Total Commits:
+                      </div>
+                      <div className="font-medium">
+                        {bulkStartDate && bulkEndDate ? (
+                          <Badge>
+                            {
+                              eachDayOfInterval({
+                                start: bulkStartDate,
+                                end: bulkEndDate,
+                              }).filter((date) => {
+                                const dayOfWeek = date.getDay();
+                                switch (frequency) {
+                                  case "daily":
+                                    return true;
+                                  case "weekdays":
+                                    return dayOfWeek > 0 && dayOfWeek < 6;
+                                  case "weekends":
+                                    return dayOfWeek === 0 || dayOfWeek === 6;
+                                  case "custom":
+                                    return selectedDays.includes(dayOfWeek);
+                                  default:
+                                    return false;
+                                }
+                              }).length
+                            }{" "}
+                            commits
+                          </Badge>
+                        ) : (
+                          "N/A"
+                        )}
+                      </div>
+                    </div>
+
+                    <div className="space-y-2">
+                      <div className="text-sm text-muted-foreground">
+                        Time Settings:
+                      </div>
+                      <div className="font-medium">
+                        {timeSelectionMode === "single"
+                          ? commitTime
+                          : selectedTimes.length > 0
+                          ? `${selectedTimes.length} time${
+                              selectedTimes.length !== 1 ? "s" : ""
+                            } selected`
+                          : "No times selected"}
+                      </div>
+                    </div>
+
+                    {/* Commit Preview Section */}
+                    {commitPreview.length > 0 && (
+                      <div className="mt-4 space-y-3">
+                        <h4 className="text-sm font-medium">Commit Preview:</h4>
+                        <div className="space-y-2 max-h-48 overflow-y-auto border rounded-md p-3">
+                          {commitPreview.map((preview, index) => (
+                            <div key={index} className="border-b pb-2 last:border-0 last:pb-0">
+                              <div className="flex justify-between text-xs">
+                                <span className="font-medium">{preview.date}</span>
+                                <span className="text-muted-foreground">{preview.time}</span>
+                              </div>
+                              <div className="text-sm mt-1">{preview.message}</div>
+                              <div className="text-xs text-muted-foreground mt-1">File: {preview.file}</div>
+                            </div>
+                          ))}
+                        </div>
+                        <div className="text-xs text-muted-foreground">
+                          This is a sample of how your commits will look. Each commit will randomly select from your message templates and files.
+                        </div>
+                      </div>
+                    )}
+                    
+                    <div className="flex gap-2 mt-4">
                       <Button
-                        className="w-full"
-                        onClick={handleScheduleCommit}
+                        variant="outline"
+                        className="flex-1"
+                        onClick={generateCommitPreview}
                         disabled={
-                          isSchedulingCommit ||
                           !selectedRepoId ||
-                          !selectedDate ||
-                          !selectedFile ||
-                          !commitMessage
+                          !bulkStartDate ||
+                          !bulkEndDate ||
+                          (filesToChange.length === 0 && !selectedFile) ||
+                          messageTemplates.split("\n").filter(t => t.trim()).length === 0
                         }
                       >
-                        {isSchedulingCommit ? (
+                        Generate Preview
+                      </Button>
+                      
+                      <Button
+                        className="flex-1"
+                        onClick={handleBulkSchedule}
+                        disabled={
+                          isBulkScheduling ||
+                          !selectedRepoId ||
+                          !bulkStartDate ||
+                          !bulkEndDate ||
+                          (filesToChange.length === 0 && !selectedFile) ||
+                          messageTemplates.split("\n").filter(t => t.trim()).length === 0
+                        }
+                      >
+                        {isBulkScheduling ? (
                           <>
                             <Loader2 className="h-4 w-4 animate-spin mr-2" />
                             Scheduling...
                           </>
                         ) : (
-                          <>Schedule Commit</>
+                          <>Schedule Bulk Commits</>
                         )}
                       </Button>
                     </div>
@@ -1635,36 +1820,89 @@ const StreakPage = () => {
 
                   <div className="space-y-2">
                     <label className="text-sm font-medium">
-                      Commit Message Template
+                      Commit Message Templates
                     </label>
-                    <Textarea
-                      placeholder="Enter commit message template"
-                      value={messageTemplate}
-                      onChange={(e) => setMessageTemplate(e.target.value)}
-                    />
+                    <div className="space-y-2">
+                      <Textarea 
+                        placeholder="Enter multiple message templates (one per line)"
+                        value={messageTemplates}
+                        onChange={(e) => setMessageTemplates(e.target.value)}
+                        className="min-h-[100px]"
+                      />
+                      <div className="flex justify-between items-center">
+                        <Button 
+                          variant="outline" 
+                          size="sm"
+                          onClick={generateSampleMessages}
+                          className="text-xs"
+                        >
+                          <RefreshCcw className="h-3 w-3 mr-1" />
+                          Generate Samples
+                        </Button>
+                        <div className="text-xs text-muted-foreground">
+                          Each line will be used as a separate message template
+                        </div>
+                      </div>
+                    </div>
                     <div className="text-xs text-muted-foreground">
-                      This will be used as the base message for all commits
+                      Use {"{date}"} for dynamic date insertion, e.g.: "Update for {"{date}"}"
                     </div>
                   </div>
 
                   <div className="space-y-2">
                     <label className="text-sm font-medium">
-                      File to Change
+                      Files to Change
                     </label>
-                    <FileSelector
-                      file={selectedFile}
-                      setFile={setSelectedFile}
-                      repository={
-                        repositories.find(
-                          (repo) => repo.id.toString() === selectedRepoId
-                        )?.name
-                      }
-                      repoOwner={
-                        repositories.find(
-                          (repo) => repo.id.toString() === selectedRepoId
-                        )?.owner?.login
-                      }
-                    />
+                    <div className="flex gap-2">
+                      <div className="flex-1">
+                        <FileSelector
+                          file={selectedFile}
+                          setFile={setSelectedFile}
+                          repository={
+                            repositories.find(
+                              (repo) => repo.id.toString() === selectedRepoId
+                            )?.name
+                          }
+                          repoOwner={
+                            repositories.find(
+                              (repo) => repo.id.toString() === selectedRepoId
+                            )?.owner?.login
+                          }
+                        />
+                      </div>
+                      <Button
+                        size="sm"
+                        onClick={addFileToList}
+                        disabled={!selectedFile}
+                        className="self-end"
+                      >
+                        Add to List
+                      </Button>
+                    </div>
+                    
+                    {filesToChange.length > 0 && (
+                      <div className="mt-2 border rounded-md p-2">
+                        <div className="text-sm font-medium mb-1">Selected Files:</div>
+                        <div className="space-y-1 max-h-32 overflow-y-auto">
+                          {filesToChange.map((file, index) => (
+                            <div key={index} className="flex items-center justify-between text-sm">
+                              <span className="truncate">{file}</span>
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => removeFileFromList(index)}
+                                className="h-6 w-6 p-0"
+                              >
+                                <X className="h-4 w-4" />
+                              </Button>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                    <div className="text-xs text-muted-foreground">
+                      Add one or more files to be modified with each commit
+                    </div>
                   </div>
                 </div>
 
@@ -1728,126 +1966,47 @@ const StreakPage = () => {
                     </div>
                   )}
 
-                  <div className="border rounded-lg p-4 space-y-4 mt-4">
-                    <h3 className="font-medium text-sm">Schedule Summary</h3>
-
-                    <div className="space-y-2">
-                      <div className="text-sm text-muted-foreground">
-                        Repository:
-                      </div>
-                      <div className="font-medium">
-                        {selectedRepoId
-                          ? repositories.find(
-                              (repo) => repo.id.toString() === selectedRepoId
-                            )?.name || "Not selected"
-                          : "Not selected"}
-                      </div>
+                  <div className="space-y-2">
+                    <div className="text-sm text-muted-foreground">
+                      Time Settings:
                     </div>
-
-                    <div className="space-y-2">
-                      <div className="text-sm text-muted-foreground">
-                        Date Range:
-                      </div>
-                      <div className="font-medium">
-                        {bulkStartDate && bulkEndDate
-                          ? `${format(
-                              bulkStartDate,
-                              "MMM d, yyyy"
-                            )} to ${format(bulkEndDate, "MMM d, yyyy")}`
-                          : "Not selected"}
-                      </div>
+                    <div className="font-medium">
+                      {timeSelectionMode === "single"
+                        ? commitTime
+                        : selectedTimes.length > 0
+                        ? `${selectedTimes.length} time${
+                            selectedTimes.length !== 1 ? "s" : ""
+                          } selected`
+                        : "No times selected"}
                     </div>
+                  </div>
 
-                    <div className="space-y-2">
-                      <div className="text-sm text-muted-foreground">
-                        Frequency:
-                      </div>
-                      <div className="font-medium capitalize">
-                        {frequency}
-                        {frequency === "custom" && selectedDays.length > 0 && (
-                          <span className="text-xs ml-2 text-muted-foreground">
-                            (
-                            {selectedDays
-                              .sort()
-                              .map(
-                                (day) =>
-                                  [
-                                    "Sun",
-                                    "Mon",
-                                    "Tue",
-                                    "Wed",
-                                    "Thu",
-                                    "Fri",
-                                    "Sat",
-                                  ][day]
-                              )
-                              .join(", ")}
-                            )
-                          </span>
-                        )}
-                      </div>
-                    </div>
-
-                    <div className="space-y-2">
-                      <div className="text-sm text-muted-foreground">
-                        Total Commits:
-                      </div>
-                      <div className="font-medium">
-                        {bulkStartDate && bulkEndDate ? (
-                          <Badge>
-                            {
-                              eachDayOfInterval({
-                                start: bulkStartDate,
-                                end: bulkEndDate,
-                              }).filter((date) => {
-                                const dayOfWeek = date.getDay();
-                                switch (frequency) {
-                                  case "daily":
-                                    return true;
-                                  case "weekdays":
-                                    return dayOfWeek > 0 && dayOfWeek < 6;
-                                  case "weekends":
-                                    return dayOfWeek === 0 || dayOfWeek === 6;
-                                  case "custom":
-                                    return selectedDays.includes(dayOfWeek);
-                                  default:
-                                    return false;
-                                }
-                              }).length
-                            }{" "}
-                            commits
-                          </Badge>
-                        ) : (
-                          "N/A"
-                        )}
-                      </div>
-                    </div>
-
-                    <div className="space-y-2">
-                      <div className="text-sm text-muted-foreground">
-                        Time Settings:
-                      </div>
-                      <div className="font-medium">
-                        {timeSelectionMode === "single"
-                          ? commitTime
-                          : selectedTimes.length > 0
-                          ? `${selectedTimes.length} time${
-                              selectedTimes.length !== 1 ? "s" : ""
-                            } selected`
-                          : "No times selected"}
-                      </div>
-                    </div>
-
+                  <div className="flex gap-2 mt-4">
                     <Button
-                      className="w-full mt-4"
+                      variant="outline"
+                      className="flex-1"
+                      onClick={generateCommitPreview}
+                      disabled={
+                        !selectedRepoId ||
+                        !bulkStartDate ||
+                        !bulkEndDate ||
+                        (filesToChange.length === 0 && !selectedFile) ||
+                        messageTemplates.split("\n").filter(t => t.trim()).length === 0
+                      }
+                    >
+                      Generate Preview
+                    </Button>
+                    
+                    <Button
+                      className="flex-1"
                       onClick={handleBulkSchedule}
                       disabled={
                         isBulkScheduling ||
                         !selectedRepoId ||
                         !bulkStartDate ||
                         !bulkEndDate ||
-                        !selectedFile ||
-                        !messageTemplate
+                        (filesToChange.length === 0 && !selectedFile) ||
+                        messageTemplates.split("\n").filter(t => t.trim()).length === 0
                       }
                     >
                       {isBulkScheduling ? (

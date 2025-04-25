@@ -200,6 +200,7 @@ export const scheduleBulkCommits = async (req: Request, res: Response, next: Nex
       dateRange,
       timeRange,
       messageTemplate,
+      messageTemplates, // Add support for array of templates
       filesToChange,
       frequency,
       customDays,
@@ -210,8 +211,13 @@ export const scheduleBulkCommits = async (req: Request, res: Response, next: Nex
     if (!repository || !repository.name || !repository.owner || 
         !dateRange || !dateRange.start || !dateRange.end || 
         !timeRange || (!timeRange.times && (!timeRange.start || !timeRange.end)) || 
-        !messageTemplate || !filesToChange || !frequency) {
+        !filesToChange || !frequency) {
       return next(new AppError('Please provide all required fields', 400));
+    }
+    
+    // Check for message templates - either messageTemplate or messageTemplates must be provided
+    if (!messageTemplate && (!messageTemplates || messageTemplates.length === 0)) {
+      return next(new AppError('Please provide a commit message template', 400));
     }
     
     if (!user.accessToken) {
@@ -229,7 +235,7 @@ export const scheduleBulkCommits = async (req: Request, res: Response, next: Nex
       new Date(dateRange.start),
       new Date(dateRange.end),
       timeRange,
-      messageTemplate,
+      messageTemplates || [messageTemplate], // Use array of templates or create array from single template
       filesToChange,
       frequency,
       customDays

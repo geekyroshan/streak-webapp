@@ -27,7 +27,8 @@ export interface IBulkCommitSchedule extends Document {
     end?: string;
     times?: string[];
   };
-  messageTemplate: string;
+  messageTemplate?: string;
+  messageTemplates?: string[];
   filesToChange: string[];
   frequency: 'daily' | 'weekdays' | 'weekends' | 'custom';
   customDays?: number[];
@@ -128,7 +129,11 @@ export const BulkCommitScheduleSchema: Schema = new Schema(
     },
     messageTemplate: {
       type: String,
-      required: true
+      required: false
+    },
+    messageTemplates: {
+      type: [String],
+      required: false
     },
     filesToChange: {
       type: [String],
