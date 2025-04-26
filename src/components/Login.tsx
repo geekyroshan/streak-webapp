@@ -2,16 +2,14 @@ import React from 'react';
 import { useAuth } from '../lib/AuthContext';
 
 const Login: React.FC = () => {
-  const handleGitHubLogin = () => {
-    window.location.href = '/api/auth/github';
-  };
-
+  const { login } = useAuth();
+  
   return (
     <div className="flex min-h-screen items-center justify-center bg-gray-100">
       <div className="w-full max-w-md rounded-lg bg-white p-8 shadow-lg">
         <h2 className="mb-6 text-center text-2xl font-bold text-gray-900">Welcome to Streak</h2>
         <button
-          onClick={handleGitHubLogin}
+          onClick={login}
           className="flex w-full items-center justify-center rounded-md bg-gray-900 px-4 py-2 text-white hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2"
         >
           <svg className="mr-2 h-5 w-5" fill="currentColor" viewBox="0 0 20 20">

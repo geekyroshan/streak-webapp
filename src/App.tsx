@@ -1,8 +1,8 @@
 import React from 'react';
-import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
-import { AuthProvider } from './lib/AuthContext';
+import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import Login from './components/Login';
 import Dashboard from './pages/Dashboard';
+import Index from './pages/Index';
 import ProtectedRoute from './components/ProtectedRoute';
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
@@ -33,25 +33,23 @@ const App: React.FC = () => {
         <TooltipProvider>
           <Toaster />
           <Sonner />
-          <AuthProvider>
-            <Routes>
-              {/* Public routes */}
-              <Route path="/login" element={<Login />} />
-              <Route path="/logout" element={<LogoutPage />} />
+          <Routes>
+            {/* Public routes */}
+            <Route path="/" element={<Index />} />
+            <Route path="/login" element={<Login />} />
+            <Route path="/logout" element={<LogoutPage />} />
 
-              {/* Protected routes */}
-              <Route path="/" element={<Navigate to="/dashboard" replace />} />
-              <Route path="/dashboard" element={<ProtectedContent><Dashboard /></ProtectedContent>} />
-              <Route path="/calendar" element={<ProtectedContent><CalendarPage /></ProtectedContent>} />
-              <Route path="/streak" element={<ProtectedContent><StreakPage /></ProtectedContent>} />
-              <Route path="/repositories" element={<ProtectedContent><RepositoriesPage /></ProtectedContent>} />
-              <Route path="/activity" element={<ProtectedContent><ActivityPage /></ProtectedContent>} />
-              <Route path="/settings" element={<ProtectedContent><SettingsPage /></ProtectedContent>} />
+            {/* Protected routes */}
+            <Route path="/dashboard" element={<ProtectedContent><Dashboard /></ProtectedContent>} />
+            <Route path="/calendar" element={<ProtectedContent><CalendarPage /></ProtectedContent>} />
+            <Route path="/streak" element={<ProtectedContent><StreakPage /></ProtectedContent>} />
+            <Route path="/repositories" element={<ProtectedContent><RepositoriesPage /></ProtectedContent>} />
+            <Route path="/activity" element={<ProtectedContent><ActivityPage /></ProtectedContent>} />
+            <Route path="/settings" element={<ProtectedContent><SettingsPage /></ProtectedContent>} />
 
-              {/* Catch all */}
-              <Route path="*" element={<NotFound />} />
-            </Routes>
-          </AuthProvider>
+            {/* Catch all */}
+            <Route path="*" element={<NotFound />} />
+          </Routes>
         </TooltipProvider>
       </QueryClientProvider>
     </Router>

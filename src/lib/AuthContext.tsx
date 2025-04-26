@@ -4,8 +4,9 @@ import { useNavigate, useLocation, Navigate } from 'react-router-dom';
 interface AuthContextType {
   isAuthenticated: boolean;
   token: string | null;
-  login: (token: string) => void;
+  login: () => void;
   logout: () => void;
+  loginWithToken: (token: string) => void;
   redirectPath: string | null;
 }
 
@@ -24,18 +25,24 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [isAuthenticated, setIsAuthenticated] = useState<boolean>(!!token);
   const [redirectPath, setRedirectPath] = useState<string | null>(null);
 
-  const login = (newToken: string) => {
-    localStorage.setItem('token', newToken);
-    setToken(newToken);
-    setIsAuthenticated(true);
-    setRedirectPath('/dashboard');
+  const login = () => {
+    // Redirect to GitHub auth endpoint
+    window.location.href = '/api/auth/github';
   };
 
   const logout = () => {
     localStorage.removeItem('token');
     setToken(null);
     setIsAuthenticated(false);
-    setRedirectPath('/login');
+    setRedirectPath('/');
+  };
+
+  // Override login with token when we have one from URL
+  const loginWithToken = (newToken: string) => {
+    localStorage.setItem('token', newToken);
+    setToken(newToken);
+    setIsAuthenticated(true);
+    setRedirectPath('/dashboard');
   };
 
   // Check for token in URL on mount
@@ -44,7 +51,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const urlToken = params.get('token');
     
     if (urlToken) {
-      login(urlToken);
+      loginWithToken(urlToken);
     }
   }, []);
 
@@ -53,6 +60,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     token,
     login,
     logout,
+    loginWithToken,
     redirectPath
   };
 
