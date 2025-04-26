@@ -25,25 +25,46 @@ api.interceptors.request.use(config => {
 // Auth services
 export const authService = {
   login: () => {
+    // Debug information
+    console.group('GitHub Authentication Debug');
+    console.log('Starting GitHub login process');
+    console.log('API URL configured as:', API_URL);
+    console.log('Window location:', window.location.href);
+    
     // Clear any existing token before redirecting to GitHub auth
+    console.log('Clearing previous auth data from localStorage');
     localStorage.removeItem('token');
     localStorage.removeItem('github_token');
     localStorage.removeItem('user');
     
     // Clear any existing cookies
+    console.log('Clearing cookies');
     document.cookie = 'jwt=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;';
+    document.cookie = 'github_token=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;';
     
     // For debugging
     console.log('Initiating GitHub login flow');
     
-    // Try to use the API-based login first 
+    // Try to use the API-based login first
     try {
-      // Use the API endpoint that will inject environment variables
-      window.location.href = '/api/github-login';
+      // Log additional debug info  
+      const loginUrl = '/api/github-login';
+      console.log('Redirecting to GitHub login endpoint:', loginUrl);
+      console.log('Full URL:', window.location.origin + loginUrl);
+      console.groupEnd();
+      
+      // Redirect to the GitHub login API endpoint
+      window.location.href = loginUrl;
     } catch (error) {
       console.error('Error redirecting to login page:', error);
+      console.log('Attempting fallback to direct API endpoint');
+      
       // Fallback to direct API endpoint
-      window.location.href = '/api/auth/github';
+      const fallbackUrl = '/api/auth/github';
+      console.log('Using fallback URL:', fallbackUrl);
+      console.groupEnd();
+      
+      window.location.href = fallbackUrl;
     }
   },
   logout: async () => {
