@@ -11,6 +11,7 @@
     { "src": "/api-test", "dest": "/api.js" },
     { "src": "/api/test", "dest": "/api/test.js" },
     { "src": "/api/github-login", "dest": "/api/github-login.js" },
+    { "src": "/api/auth/github/test-callback", "dest": "/api/auth/github/test-callback.js" },
     { "src": "/api/auth/github/callback", "dest": "/api/auth/github/callback.js" },
     { "src": "/api/auth/github", "dest": "/api/auth/github.js" },
     { "src": "/api/health", "dest": "/api/health/index.js" },
