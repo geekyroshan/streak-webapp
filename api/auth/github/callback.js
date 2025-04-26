@@ -1,31 +1,71 @@
-// Simple GitHub OAuth callback handler
+// GitHub OAuth callback handler for Vercel
 module.exports = async (req, res) => {
   console.log('GitHub OAuth callback hit:', req.url);
   
   try {
-    // For now, just log the authorization code from GitHub
     const code = req.query.code;
-    console.log('Received GitHub authorization code:', code);
     
-    // In a complete implementation, we would:
-    // 1. Exchange this code for an access token
-    // 2. Fetch the user's GitHub profile
-    // 3. Create/update user in our database
-    // 4. Generate a JWT token
-    // 5. Set cookies and redirect to frontend
+    if (!code) {
+      console.error('No authorization code received from GitHub');
+      return res.status(400).json({
+        error: 'Bad Request',
+        message: 'No authorization code received from GitHub'
+      });
+    }
     
-    // For this simplified version, just redirect to home with a message
-    return res.status(200).json({
-      status: 'success',
-      message: 'GitHub authentication received. This is a simplified callback for testing.',
-      code: code,
-      note: 'In a real implementation, this would complete the OAuth flow and redirect to the frontend.'
+    // Get GitHub OAuth credentials from environment variables
+    const clientId = process.env.GITHUB_CLIENT_ID;
+    const clientSecret = process.env.GITHUB_CLIENT_SECRET;
+    
+    if (!clientId || !clientSecret) {
+      console.error('GitHub OAuth credentials not configured');
+      return res.status(500).json({
+        error: 'Configuration Error',
+        message: 'GitHub OAuth credentials not properly configured'
+      });
+    }
+    
+    // Exchange code for an access token
+    const tokenResponse = await fetch('https://github.com/login/oauth/access_token', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Accept': 'application/json'
+      },
+      body: JSON.stringify({
+        client_id: clientId,
+        client_secret: clientSecret,
+        code: code
+      })
     });
+    
+    const tokenData = await tokenResponse.json();
+    
+    if (tokenData.error || !tokenData.access_token) {
+      console.error('Error exchanging code for token:', tokenData.error_description || tokenData.error);
+      return res.status(400).json({
+        error: 'Authentication Error',
+        message: tokenData.error_description || 'Failed to authenticate with GitHub'
+      });
+    }
+    
+    // Set token in cookie and redirect to frontend
+    const token = tokenData.access_token;
+    
+    // Set token in cookies
+    res.setHeader('Set-Cookie', `github_token=${token}; Path=/; Max-Age=2592000; HttpOnly; SameSite=Lax`);
+    
+    console.log('Authentication successful, redirecting to dashboard...');
+    
+    // Redirect to the dashboard
+    res.statusCode = 302;
+    res.setHeader('Location', '/dashboard');
+    return res.end();
   } catch (error) {
     console.error('Error in GitHub OAuth callback:', error);
     return res.status(500).json({
       error: 'Internal Server Error',
-      message: error.message || 'Unknown error occurred'
+      message: 'An error occurred during GitHub authentication'
     });
   }
 }; 
