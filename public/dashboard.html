@@ -49,6 +49,20 @@
       font-size: 16px;
       margin-top: 20px;
     }
+    .token-value {
+      word-break: break-all;
+      font-family: monospace;
+      padding: 8px;
+      background: #0d1117;
+      border-radius: 4px;
+      margin-top: 10px;
+    }
+    .debug-info {
+      font-size: 12px;
+      margin-top: 20px;
+      color: #8b949e;
+      text-align: left;
+    }
   </style>
 </head>
 <body>
@@ -62,6 +76,8 @@
       <a href="/test" class="button">Return to Test Page</a>
       <a href="/" class="button">Go to Home</a>
     </div>
+    
+    <div class="debug-info" id="debugInfo"></div>
   </div>
 
   <script>
@@ -73,19 +89,72 @@
       return null;
     }
     
+    // Function to get URL parameters
+    function getUrlParam(name) {
+      const params = new URLSearchParams(window.location.search);
+      return params.get(name);
+    }
+    
+    // Function to save token to localStorage
+    function saveToken(token) {
+      if (token) {
+        try {
+          localStorage.setItem('github_token', token);
+          return true;
+        } catch (e) {
+          console.error('Failed to save token to localStorage:', e);
+        }
+      }
+      return false;
+    }
+    
     // Display authentication information
     document.addEventListener('DOMContentLoaded', function() {
       const tokenInfo = document.getElementById('tokenInfo');
-      const githubToken = getCookie('github_token');
+      const debugInfo = document.getElementById('debugInfo');
       
-      if (githubToken) {
+      // Check for token in cookies
+      const cookieToken = getCookie('github_token') || getCookie('github_token_alt') || getCookie('github_token_client');
+      
+      // Check for token in URL parameter
+      const urlToken = getUrlParam('token');
+      
+      // Save URL token to localStorage if present
+      if (urlToken) {
+        saveToken(urlToken);
+      }
+      
+      // Check localStorage for token
+      const localStorageToken = localStorage.getItem('github_token');
+      
+      // Collect debug info
+      let debugText = 'Debug Information:\n';
+      debugText += `- Cookie available: ${!!cookieToken}\n`;
+      debugText += `- URL token available: ${!!urlToken}\n`;
+      debugText += `- localStorage token available: ${!!localStorageToken}\n`;
+      debugText += `- All cookies: ${document.cookie || 'none'}\n`;
+      debugInfo.innerText = debugText;
+      
+      // Use any available token
+      const token = cookieToken || urlToken || localStorageToken;
+      
+      if (token) {
+        // Successfully authenticated
         tokenInfo.innerHTML = `
           <h3>✅ Authentication Successful</h3>
           <p>You have been successfully authenticated with GitHub!</p>
-          <p>Authentication token has been stored as a secure cookie.</p>
+          <p>Authentication token has been received and stored.</p>
+          <p>Token prefix: <span class="token-value">${token.substring(0, 7)}...</span></p>
         `;
         tokenInfo.style.color = '#4caf50';
+        
+        // Clear token from URL if present (for security)
+        if (urlToken) {
+          const cleanUrl = window.location.pathname;
+          window.history.replaceState({}, document.title, cleanUrl);
+        }
       } else {
+        // Not authenticated
         tokenInfo.innerHTML = `
           <h3>❌ Not Authenticated</h3>
           <p>No GitHub authentication token found.</p>
