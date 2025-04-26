@@ -6,6 +6,7 @@ interface AuthContextType {
   token: string | null;
   login: (token: string) => void;
   logout: () => void;
+  redirectPath: string | null;
 }
 
 const AuthContext = createContext<AuthContextType | null>(null);
@@ -21,20 +22,20 @@ export const useAuth = () => {
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [token, setToken] = useState<string | null>(localStorage.getItem('token'));
   const [isAuthenticated, setIsAuthenticated] = useState<boolean>(!!token);
-  const navigate = useNavigate();
+  const [redirectPath, setRedirectPath] = useState<string | null>(null);
 
   const login = (newToken: string) => {
     localStorage.setItem('token', newToken);
     setToken(newToken);
     setIsAuthenticated(true);
-    navigate('/dashboard', { replace: true });
+    setRedirectPath('/dashboard');
   };
 
   const logout = () => {
     localStorage.removeItem('token');
     setToken(null);
     setIsAuthenticated(false);
-    navigate('/login', { replace: true });
+    setRedirectPath('/login');
   };
 
   // Check for token in URL on mount
@@ -51,12 +52,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     isAuthenticated,
     token,
     login,
-    logout
+    logout,
+    redirectPath
   };
 
   return (
     <AuthContext.Provider value={value}>
-      {children}
+      {redirectPath ? <Navigate to={redirectPath} replace /> : children}
     </AuthContext.Provider>
   );
 }; 
