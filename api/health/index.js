@@ -1,16 +1,16 @@
-// Simple health check endpoint
-module.exports = (req, res) => {
+// Health check endpoint
+export default function handler(req, res) {
   try {
-    res.status(200).json({
+    return res.status(200).json({
       status: "ok",
       message: "API is functioning",
       timestamp: new Date().toISOString()
     });
   } catch (error) {
-    res.status(500).json({
+    return res.status(500).json({
       status: "error",
       message: "Health check failed",
       error: error.message
     });
   }
-}; 
+} 

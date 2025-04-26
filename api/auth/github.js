@@ -1,5 +1,5 @@
-// Direct GitHub OAuth handler for Vercel
-module.exports = (req, res) => {
+// GitHub auth endpoint 
+export default function handler(req, res) {
   try {
     // Hardcoded GitHub Client ID
     const githubClientId = "Ov23liZPhqlr3PBuhGK8";
@@ -8,9 +8,7 @@ module.exports = (req, res) => {
     const githubAuthUrl = `https://github.com/login/oauth/authorize?client_id=${githubClientId}&scope=user,repo`;
     
     // Send redirect response
-    res.writeHead(302, { 
-      "Location": githubAuthUrl
-    });
+    res.writeHead(302, { "Location": githubAuthUrl });
     return res.end();
   } catch (error) {
     return res.status(500).json({
@@ -19,4 +17,4 @@ module.exports = (req, res) => {
       error: error.message
     });
   }
-}; 
+} 

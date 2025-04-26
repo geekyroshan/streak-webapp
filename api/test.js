@@ -1,3 +1,4 @@
-module.exports = (req, res) => {
-  res.status(200).json({ hello: "world" });
-}; 
+// ES Modules format
+export default function handler(req, res) {
+  return res.status(200).json({ hello: "world" });
+} 

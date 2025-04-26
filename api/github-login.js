@@ -1,5 +1,5 @@
-// Direct GitHub OAuth handler for Vercel
-module.exports = (req, res) => {
+// GitHub login endpoint
+export default function handler(req, res) {
   try {
     // Hardcoded GitHub Client ID 
     const githubClientId = "Ov23liZPhqlr3PBuhGK8";
@@ -17,4 +17,4 @@ module.exports = (req, res) => {
       error: error.message
     });
   }
-}; 
+} 
