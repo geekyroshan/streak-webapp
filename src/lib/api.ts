@@ -17,28 +17,10 @@ const api = axios.create({
 api.interceptors.request.use(config => {
   const token = localStorage.getItem('token');
   if (token) {
-    config.headers['Authorization'] = `token ${token}`;
+    config.headers['Authorization'] = `Bearer ${token}`;
   }
   return config;
-}, error => {
-  console.error('Request interceptor error:', error);
-  return Promise.reject(error);
 });
-
-// Add response interceptor for better error handling
-api.interceptors.response.use(
-  response => response,
-  error => {
-    console.error('API Error:', error);
-    if (error.response?.status === 401) {
-      // If unauthorized, clear token and redirect to login
-      console.log('Unauthorized request detected, clearing token');
-      localStorage.removeItem('token');
-      window.location.href = '/login';
-    }
-    return Promise.reject(error);
-  }
-);
 
 // Auth services
 export const authService = {
@@ -90,15 +72,13 @@ export const authService = {
     console.log('Cookies before logout:', document.cookie);
     
     try {
-      // Clear token first to prevent any authenticated requests during logout
-      localStorage.removeItem('token');
-      
       // Call server logout endpoint and wait for it to complete
       await api.get('/auth/logout');
       console.log('Server logout successful');
       
       // Clear all localStorage items
       console.log('Clearing localStorage items');
+      localStorage.removeItem('token');
       localStorage.removeItem('github_token');
       localStorage.removeItem('user');
       
@@ -110,7 +90,7 @@ export const authService = {
       window.location.href = '/';
     } catch (err) {
       console.error('Error during logout:', err);
-      // Ensure token is cleared even if logout fails
+      // Even if there was an error, still clear local storage
       localStorage.removeItem('token');
       localStorage.removeItem('github_token');
       localStorage.removeItem('user');
@@ -119,13 +99,8 @@ export const authService = {
     }
   },
   getCurrentUser: async () => {
-    try {
-      const response = await api.get('/auth/me');
-      return response.data.data.user;
-    } catch (error) {
-      console.error('Error fetching current user:', error);
-      throw error;
-    }
+    const response = await api.get('/auth/me');
+    return response.data.data.user;
   }
 };
 

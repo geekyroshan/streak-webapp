@@ -23,11 +23,11 @@ const queryClient = new QueryClient();
 const App: React.FC = () => {
   return (
     <QueryClientProvider client={queryClient}>
-      <TooltipProvider>
-        <Toaster />
-        <Sonner />
-        <Router>
-          <AuthProvider>
+      <AuthProvider>
+        <TooltipProvider>
+          <Toaster />
+          <Sonner />
+          <Router>
             <Routes>
               <Route path="/login" element={<Login />} />
               <Route
@@ -48,9 +48,9 @@ const App: React.FC = () => {
               <Route path="/index" element={<Navigate to="/" replace />} />
               <Route path="*" element={<NotFound />} />
             </Routes>
-          </AuthProvider>
-        </Router>
-      </TooltipProvider>
+          </Router>
+        </TooltipProvider>
+      </AuthProvider>
     </QueryClientProvider>
   );
 };

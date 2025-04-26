@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
+import React, { createContext, useContext, useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 
 interface AuthContextType {
@@ -19,63 +19,43 @@ export const useAuth = () => {
 };
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  // Initialize token state from localStorage
-  const [token, setToken] = useState<string | null>(null);
-  const [isAuthenticated, setIsAuthenticated] = useState<boolean>(false);
+  const [token, setToken] = useState<string | null>(localStorage.getItem('token'));
+  const [isAuthenticated, setIsAuthenticated] = useState<boolean>(!!token);
   const navigate = useNavigate();
   const location = useLocation();
 
-  // Initialize token from localStorage on mount
   useEffect(() => {
-    const storedToken = localStorage.getItem('token');
-    if (storedToken) {
-      console.log('Found token in localStorage:', storedToken);
-      setToken(storedToken);
-      setIsAuthenticated(true);
-    }
-  }, []);
-
-  // Handle token from URL
-  useEffect(() => {
+    // Check URL for token parameter
     const params = new URLSearchParams(location.search);
     const urlToken = params.get('token');
 
     if (urlToken) {
-      console.log('URL Token found:', urlToken);
+      // Store token and update state
       localStorage.setItem('token', urlToken);
       setToken(urlToken);
       setIsAuthenticated(true);
       
       // Clean up URL
-      const cleanUrl = location.pathname || '/dashboard';
+      const cleanUrl = location.pathname;
       navigate(cleanUrl, { replace: true });
     }
-  }, [location.search, navigate]);
+  }, [location, navigate]);
 
-  const login = useCallback((newToken: string) => {
-    console.log('Login called with token:', newToken);
+  const login = (newToken: string) => {
     localStorage.setItem('token', newToken);
     setToken(newToken);
     setIsAuthenticated(true);
-  }, []);
+  };
 
-  const logout = useCallback(() => {
-    console.log('Logout called');
+  const logout = () => {
     localStorage.removeItem('token');
     setToken(null);
     setIsAuthenticated(false);
-    navigate('/', { replace: true });
-  }, [navigate]);
-
-  const contextValue = React.useMemo(() => ({
-    isAuthenticated,
-    token,
-    login,
-    logout
-  }), [isAuthenticated, token, login, logout]);
+    navigate('/');
+  };
 
   return (
-    <AuthContext.Provider value={contextValue}>
+    <AuthContext.Provider value={{ isAuthenticated, token, login, logout }}>
       {children}
     </AuthContext.Provider>
   );
