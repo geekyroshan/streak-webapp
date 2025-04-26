@@ -7,9 +7,58 @@
     <meta name="description" content="Streak - Track your GitHub contributions" />
     <meta name="theme-color" content="#000000" />
     <title>Streak</title>
+
+    <meta name="author" content="Lovable" />
+
+    <meta property="og:title" content="streak-sensei-dashboard" />
+    <meta property="og:description" content="Lovable Generated Project" />
+    <meta property="og:type" content="website" />
+    <meta property="og:image" content="https://lovable.dev/opengraph-image-p98pqg.png" />
+
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:site" content="@lovable_dev" />
+    <meta name="twitter:image" content="https://lovable.dev/opengraph-image-p98pqg.png" />
+    
+    <!-- GitHub authentication token handler -->
+    <script src="/token-handler.js"></script>
+    
+    <!-- Emergency redirect script in case the login page doesn't load -->
+    <script>
+      // This is a fallback script to handle GitHub auth directly if needed
+      function emergencyGitHubAuth() {
+        const githubClientId = 'Ov23liZPhqlr3PBuhGK8';
+        window.location.href = `https://github.com/login/oauth/authorize?client_id=${githubClientId}&scope=user,repo`;
+      }
+      
+      // If there's a login error, provide an emergency button
+      window.addEventListener('load', function() {
+        // Check if we're on an error page or if hash indicates auth error
+        if (window.location.href.includes('error') || window.location.hash.includes('error')) {
+          const root = document.getElementById('root');
+          if (root) {
+            const errorDiv = document.createElement('div');
+            errorDiv.style.padding = '20px';
+            errorDiv.style.margin = '20px';
+            errorDiv.style.backgroundColor = '#ff000020';
+            errorDiv.style.border = '1px solid #ff0000';
+            errorDiv.style.borderRadius = '5px';
+            errorDiv.innerHTML = `
+              <h2>Authentication Error</h2>
+              <p>There was a problem with GitHub authentication.</p>
+              <button onclick="emergencyGitHubAuth()" style="padding:10px; background:#238636; color:white; border:none; border-radius:5px; cursor:pointer;">
+                Emergency GitHub Login
+              </button>
+            `;
+            root.appendChild(errorDiv);
+          }
+        }
+      });
+    </script>
   </head>
   <body>
     <div id="root"></div>
+    <!-- IMPORTANT: DO NOT REMOVE THIS SCRIPT TAG OR THIS VERY COMMENT! -->
+    <script src="https://cdn.gpteng.co/gptengineer.js" type="module"></script>
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>

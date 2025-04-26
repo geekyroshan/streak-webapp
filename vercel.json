@@ -5,12 +5,26 @@
       "src": "package.json",
       "use": "@vercel/static-build",
       "config": { 
-        "distDir": "dist"
+        "distDir": "dist",
+        "buildCommand": "npm run build"
+      }
+    },
+    { 
+      "src": "api/**/*.js",
+      "use": "@vercel/node",
+      "config": { 
+        "runtime": "nodejs18.x"
       }
     }
   ],
   "rewrites": [
-    { "source": "/api/(.*)", "destination": "/api/$1" },
+    { "source": "/api/auth/github/callback", "destination": "/api/auth/github/callback.js" },
+    { "source": "/api/auth/github", "destination": "/api/auth/github.js" },
+    { "source": "/api/auth", "destination": "/api/auth/index.js" },
+    { "source": "/api/health", "destination": "/api/health/index.js" },
+    { "source": "/api/github-login", "destination": "/api/github-login.js" },
+    { "source": "/api/test", "destination": "/api/test.js" },
+    { "source": "/api/(.*)", "destination": "/api/$1.js" },
     { "source": "/(.*)", "destination": "/index.html" }
   ],
   "headers": [
