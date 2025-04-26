@@ -39,15 +39,17 @@ export default async function handler(req, res) {
       });
     }
     
-    // Set token in cookie and redirect to frontend
+    // Get the token
     const token = tokenData.access_token;
     
-    // Set a single cookie with the token
-    res.setHeader('Set-Cookie', `token=${token}; Path=/; Max-Age=2592000; SameSite=Lax`);
-    
-    // Redirect to the frontend with the token
-    const redirectUrl = `/?token=${token}`;
-    res.writeHead(302, { 'Location': redirectUrl });
+    // Redirect to the frontend dashboard with the token
+    const redirectUrl = `/dashboard?token=${token}`;
+    res.writeHead(302, { 
+      'Location': redirectUrl,
+      'Cache-Control': 'no-store, no-cache, must-revalidate, proxy-revalidate',
+      'Pragma': 'no-cache',
+      'Expires': '0'
+    });
     return res.end();
   } catch (error) {
     return res.status(500).json({

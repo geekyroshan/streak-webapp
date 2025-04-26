@@ -1,10 +1,14 @@
+import React from 'react';
+import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
+import { AuthProvider } from './lib/AuthContext';
+import Login from './components/Login';
+import Dashboard from './pages/Dashboard';
+import ProtectedRoute from './components/ProtectedRoute';
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { Layout } from "./components/Layout";
-import Dashboard from "./pages/Dashboard";
 import CalendarPage from "./pages/CalendarPage";
 import StreakPage from "./pages/StreakPage";
 import RepositoriesPage from "./pages/RepositoriesPage";
@@ -13,33 +17,42 @@ import SettingsPage from "./pages/SettingsPage";
 import NotFound from "./pages/NotFound";
 import Index from "./pages/Index";
 import LogoutPage from "./pages/LogoutPage";
-import { AuthProvider } from "./lib/AuthContext";
 
 const queryClient = new QueryClient();
 
-const App = () => (
-  <QueryClientProvider client={queryClient}>
-    <AuthProvider>
-      <TooltipProvider>
-        <Toaster />
-        <Sonner />
-        <BrowserRouter>
-          <Routes>
-            <Route path="/" element={<Index />} />
-            <Route path="/dashboard" element={<Layout><Dashboard /></Layout>} />
-            <Route path="/calendar" element={<Navigate to="/dashboard" replace />} />
-            <Route path="/streak" element={<Layout><StreakPage /></Layout>} />
-            <Route path="/repositories" element={<Layout><RepositoriesPage /></Layout>} />
-            <Route path="/activity" element={<Layout><ActivityPage /></Layout>} />
-            <Route path="/settings" element={<Layout><SettingsPage /></Layout>} />
-            <Route path="/logout" element={<LogoutPage />} />
-            <Route path="/index" element={<Navigate to="/" replace />} />
-            <Route path="*" element={<NotFound />} />
-          </Routes>
-        </BrowserRouter>
-      </TooltipProvider>
-    </AuthProvider>
-  </QueryClientProvider>
-);
+const App: React.FC = () => {
+  return (
+    <QueryClientProvider client={queryClient}>
+      <AuthProvider>
+        <TooltipProvider>
+          <Toaster />
+          <Sonner />
+          <Router>
+            <Routes>
+              <Route path="/login" element={<Login />} />
+              <Route
+                path="/dashboard"
+                element={
+                  <ProtectedRoute>
+                    <Layout><Dashboard /></Layout>
+                  </ProtectedRoute>
+                }
+              />
+              <Route path="/" element={<Navigate to="/dashboard" replace />} />
+              <Route path="/calendar" element={<Layout><CalendarPage /></Layout>} />
+              <Route path="/streak" element={<Layout><StreakPage /></Layout>} />
+              <Route path="/repositories" element={<Layout><RepositoriesPage /></Layout>} />
+              <Route path="/activity" element={<Layout><ActivityPage /></Layout>} />
+              <Route path="/settings" element={<Layout><SettingsPage /></Layout>} />
+              <Route path="/logout" element={<LogoutPage />} />
+              <Route path="/index" element={<Navigate to="/" replace />} />
+              <Route path="*" element={<NotFound />} />
+            </Routes>
+          </Router>
+        </TooltipProvider>
+      </AuthProvider>
+    </QueryClientProvider>
+  );
+};
 
 export default App;
