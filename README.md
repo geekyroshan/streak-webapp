@@ -99,9 +99,6 @@ A modern web application that helps developers maintain their GitHub contributio
 - Make sure your backend service has enough memory for handling scheduled commits
 - Set up a proper database backup strategy for MongoDB
 
-## Deployment Note
-Last deployment timestamp: 2025-04-26T12:15:00Z
-
 ## Contributing
 
 Contributions are welcome! Please feel free to submit a Pull Request.
