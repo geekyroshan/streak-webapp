@@ -1,14 +1,16 @@
 // Simple health check endpoint
 module.exports = (req, res) => {
-  console.log('Health check endpoint hit');
-  
-  res.status(200).json({
-    status: 'ok',
-    message: 'API is functioning',
-    timestamp: new Date().toISOString(),
-    env: {
-      nodeEnv: process.env.NODE_ENV || 'not set',
-      hasGithubConfig: !!process.env.GITHUB_CLIENT_ID
-    }
-  });
+  try {
+    res.status(200).json({
+      status: "ok",
+      message: "API is functioning",
+      timestamp: new Date().toISOString()
+    });
+  } catch (error) {
+    res.status(500).json({
+      status: "error",
+      message: "Health check failed",
+      error: error.message
+    });
+  }
 }; 
