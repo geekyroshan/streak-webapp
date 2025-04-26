@@ -30,6 +30,15 @@ const App: React.FC = () => {
           <AuthProvider>
             <Routes>
               <Route path="/login" element={<Login />} />
+              <Route path="/logout" element={<LogoutPage />} />
+              <Route
+                path="/"
+                element={
+                  <ProtectedRoute>
+                    <Navigate to="/dashboard" replace />
+                  </ProtectedRoute>
+                }
+              />
               <Route
                 path="/dashboard"
                 element={
@@ -38,13 +47,46 @@ const App: React.FC = () => {
                   </ProtectedRoute>
                 }
               />
-              <Route path="/" element={<Navigate to="/dashboard" replace />} />
-              <Route path="/calendar" element={<Layout><CalendarPage /></Layout>} />
-              <Route path="/streak" element={<Layout><StreakPage /></Layout>} />
-              <Route path="/repositories" element={<Layout><RepositoriesPage /></Layout>} />
-              <Route path="/activity" element={<Layout><ActivityPage /></Layout>} />
-              <Route path="/settings" element={<Layout><SettingsPage /></Layout>} />
-              <Route path="/logout" element={<LogoutPage />} />
+              <Route
+                path="/calendar"
+                element={
+                  <ProtectedRoute>
+                    <Layout><CalendarPage /></Layout>
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/streak"
+                element={
+                  <ProtectedRoute>
+                    <Layout><StreakPage /></Layout>
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/repositories"
+                element={
+                  <ProtectedRoute>
+                    <Layout><RepositoriesPage /></Layout>
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/activity"
+                element={
+                  <ProtectedRoute>
+                    <Layout><ActivityPage /></Layout>
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/settings"
+                element={
+                  <ProtectedRoute>
+                    <Layout><SettingsPage /></Layout>
+                  </ProtectedRoute>
+                }
+              />
               <Route path="/index" element={<Navigate to="/" replace />} />
               <Route path="*" element={<NotFound />} />
             </Routes>

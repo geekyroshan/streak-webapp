@@ -10,6 +10,40 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | null>(null);
 
+// Separate hook for managing auth state
+const useAuthState = () => {
+  const [token, setToken] = useState<string | null>(() => {
+    try {
+      return localStorage.getItem('token');
+    } catch {
+      return null;
+    }
+  });
+  const [isAuthenticated, setIsAuthenticated] = useState<boolean>(!!token);
+
+  const setAuth = useCallback((newToken: string | null) => {
+    try {
+      if (newToken) {
+        localStorage.setItem('token', newToken);
+        setToken(newToken);
+        setIsAuthenticated(true);
+      } else {
+        localStorage.removeItem('token');
+        setToken(null);
+        setIsAuthenticated(false);
+      }
+    } catch (error) {
+      console.error('Error managing auth state:', error);
+    }
+  }, []);
+
+  return {
+    token,
+    isAuthenticated,
+    setAuth
+  };
+};
+
 export const useAuth = () => {
   const context = useContext(AuthContext);
   if (!context) {
@@ -19,53 +53,39 @@ export const useAuth = () => {
 };
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  // Initialize token state from localStorage
-  const [token, setToken] = useState<string | null>(null);
-  const [isAuthenticated, setIsAuthenticated] = useState<boolean>(false);
+  const { token, isAuthenticated, setAuth } = useAuthState();
   const navigate = useNavigate();
   const location = useLocation();
 
-  // Initialize token from localStorage on mount
-  useEffect(() => {
-    const storedToken = localStorage.getItem('token');
-    if (storedToken) {
-      console.log('Found token in localStorage:', storedToken);
-      setToken(storedToken);
-      setIsAuthenticated(true);
-    }
-  }, []);
-
   // Handle token from URL
   useEffect(() => {
-    const params = new URLSearchParams(location.search);
-    const urlToken = params.get('token');
+    try {
+      const params = new URLSearchParams(location.search);
+      const urlToken = params.get('token');
 
-    if (urlToken) {
-      console.log('URL Token found:', urlToken);
-      localStorage.setItem('token', urlToken);
-      setToken(urlToken);
-      setIsAuthenticated(true);
-      
-      // Clean up URL
-      const cleanUrl = location.pathname || '/dashboard';
-      navigate(cleanUrl, { replace: true });
+      if (urlToken) {
+        console.log('URL Token found:', urlToken);
+        setAuth(urlToken);
+        
+        // Clean up URL
+        const cleanUrl = location.pathname || '/dashboard';
+        navigate(cleanUrl, { replace: true });
+      }
+    } catch (error) {
+      console.error('Error handling URL token:', error);
     }
-  }, [location.search, navigate]);
+  }, [location.search, navigate, setAuth]);
 
   const login = useCallback((newToken: string) => {
     console.log('Login called with token:', newToken);
-    localStorage.setItem('token', newToken);
-    setToken(newToken);
-    setIsAuthenticated(true);
-  }, []);
+    setAuth(newToken);
+  }, [setAuth]);
 
   const logout = useCallback(() => {
     console.log('Logout called');
-    localStorage.removeItem('token');
-    setToken(null);
-    setIsAuthenticated(false);
+    setAuth(null);
     navigate('/', { replace: true });
-  }, [navigate]);
+  }, [navigate, setAuth]);
 
   const contextValue = React.useMemo(() => ({
     isAuthenticated,
