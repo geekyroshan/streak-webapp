@@ -8,7 +8,10 @@ export default function handler(req, res) {
     const githubAuthUrl = `https://github.com/login/oauth/authorize?client_id=${githubClientId}&scope=user,repo`;
     
     // Send redirect response
-    res.writeHead(302, { "Location": githubAuthUrl });
+    res.writeHead(302, { 
+      "Location": githubAuthUrl,
+      "Cache-Control": "no-cache, no-store"
+    });
     return res.end();
   } catch (error) {
     return res.status(500).json({

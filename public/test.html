@@ -66,6 +66,7 @@
       <a href="https://github.com/login/oauth/authorize?client_id=Ov23liZPhqlr3PBuhGK8&scope=user,repo" class="button" style="background-color: #6e5494;">Direct GitHub Login</a>
       <a href="/api/auth/github/callback?code=test_code" class="button" style="background-color: #3f51b5;">Test Callback</a>
       <a href="/api/auth/github/test-callback?code=test_code" class="button" style="background-color: #2196f3;">Test Simple Callback</a>
+      <button onclick="forceCacheBypass()" class="button" style="background-color: #f44336; cursor: pointer;">Force Cache Bypass</button>
     </div>
     
     <pre id="info">Loading environment information...</pre>
@@ -94,6 +95,20 @@
       .catch(error => {
         infoElement.textContent += '\n\nAPI Health Check Error:\n' + error.message;
       });
+
+    // Function to bypass cache for GitHub authorization
+    function forceCacheBypass() {
+      // Add timestamp to prevent caching
+      const timestamp = new Date().getTime();
+      const bypassUrl = `/api/auth/github?t=${timestamp}`;
+      
+      // Display what's happening
+      const infoEl = document.getElementById('info');
+      infoEl.textContent += '\n\nForcing cache bypass with: ' + bypassUrl;
+      
+      // Redirect with cache busting
+      window.location.href = bypassUrl;
+    }
   </script>
 </body>
 </html> 

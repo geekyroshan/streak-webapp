@@ -18,6 +18,7 @@
     { "src": "/api/auth", "dest": "/api/auth/index.js" },
     { "src": "/api", "dest": "/api/index.js" },
     { "src": "/test", "dest": "/public/test.html" },
+    { "src": "/dashboard", "dest": "/public/dashboard.html" },
     { "src": "/(.*\\.(js|css|ico|png|jpg|svg|ttf|woff|woff2|html)$)", "dest": "/dist/$1" },
     { "src": "/(.*)", "dest": "/dist/index.html" }
   ],
