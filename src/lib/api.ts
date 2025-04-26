@@ -45,11 +45,10 @@ export const authService = {
     // For debugging
     console.log('Initiating GitHub login flow');
     
-    // Try to use the API-based login first
     try {
-      // Log additional debug info  
-      const loginUrl = '/api/github-login';
-      console.log('Redirecting to GitHub login endpoint:', loginUrl);
+      // Use the direct auth/github endpoint to avoid routing confusion
+      const loginUrl = '/api/auth/github';
+      console.log('Redirecting to GitHub auth endpoint:', loginUrl);
       console.log('Full URL:', window.location.origin + loginUrl);
       console.groupEnd();
       
@@ -57,11 +56,12 @@ export const authService = {
       window.location.href = loginUrl;
     } catch (error) {
       console.error('Error redirecting to login page:', error);
-      console.log('Attempting fallback to direct API endpoint');
+      console.log('Attempting fallback to direct GitHub OAuth URL');
       
-      // Fallback to direct API endpoint
-      const fallbackUrl = '/api/auth/github';
-      console.log('Using fallback URL:', fallbackUrl);
+      // Direct GitHub OAuth URL as fallback
+      const githubClientId = 'Ov23liZPhqlr3PBuhGK8'; // Hardcoded for fallback only
+      const fallbackUrl = `https://github.com/login/oauth/authorize?client_id=${githubClientId}&scope=user,repo`;
+      console.log('Using direct GitHub OAuth URL:', fallbackUrl);
       console.groupEnd();
       
       window.location.href = fallbackUrl;
