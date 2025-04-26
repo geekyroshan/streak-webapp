@@ -76,6 +76,7 @@ export const BackdatingCard = () => {
   const fetchMissedDays = async (lookbackMonths = 6) => {
     try {
       setLoading(true);
+      setError('');
       
       // Calculate date for lookback period
       const lookbackDate = new Date();
@@ -88,6 +89,16 @@ export const BackdatingCard = () => {
       
       const response = await api.get(url);
       const data = response.data.data;
+      
+      console.log('Received backdating data:', data);
+      
+      // Handle case where data or analysis is undefined
+      if (!data || !data.analysis) {
+        console.error('Invalid response data or missing analysis:', data);
+        setError('Failed to analyze your contribution history. Please try again later.');
+        setLoading(false);
+        return;
+      }
       
       const { analysis } = data;
       
@@ -145,6 +156,7 @@ export const BackdatingCard = () => {
           }
         }
       } else {
+        console.error('Missing gaps data in analysis:', analysis);
         setMissedDays([]);
       }
       

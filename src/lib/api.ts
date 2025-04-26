@@ -1,4 +1,5 @@
 import axios from 'axios';
+import { debugLog, logApiResponse, formatApiError } from './debug';
 
 // API base URL with proper environment variable handling
 const API_URL = import.meta.env.VITE_API_URL || 
@@ -17,7 +18,12 @@ const api = axios.create({
 api.interceptors.request.use(config => {
   const token = localStorage.getItem('token');
   if (token) {
-    config.headers['Authorization'] = `token ${token}`;
+    config.headers['Authorization'] = `Bearer ${token}`;
+    
+    // Add debug log to help identify token issues
+    console.log('Using token for API request to:', config.url);
+  } else {
+    console.warn('No token found in localStorage for API request to:', config.url);
   }
   return config;
 }, error => {
@@ -431,18 +437,61 @@ export const streakService = {
 // Contribution services
 export const contributionService = {
   getUserContributions: async (since?: string, filterScheduled: boolean = true) => {
-    const params = new URLSearchParams();
-    if (since) params.append('since', since);
-    if (filterScheduled) params.append('filterScheduled', 'true');
-    
-    const url = params.toString() ? `/contributions?${params.toString()}` : '/contributions';
-    const response = await api.get(url);
-    return response.data.data;
+    try {
+      const params = new URLSearchParams();
+      if (since) params.append('since', since);
+      if (filterScheduled) params.append('filterScheduled', 'true');
+      
+      const url = params.toString() ? `/contributions?${params.toString()}` : '/contributions';
+      debugLog(`Fetching contributions from: ${url}`);
+      
+      const response = await api.get(url);
+      logApiResponse(url, response);
+      
+      // Add a check for empty or invalid response
+      if (!response.data || !response.data.data) {
+        debugLog('Empty or invalid response from contributions API');
+        return { contributions: [], events: [], analysis: { gaps: [] } };
+      }
+      
+      return response.data.data;
+    } catch (error) {
+      console.error('Failed to fetch user contributions:', formatApiError(error));
+      // Return empty data structure to prevent UI errors
+      return { contributions: [], events: [], analysis: { gaps: [] } };
+    }
   },
+  
   getStreakStats: async () => {
-    const response = await api.get('/contributions/stats');
-    return response.data.data;
+    try {
+      debugLog('Fetching streak stats from: /contributions/stats');
+      const response = await api.get('/contributions/stats');
+      logApiResponse('/contributions/stats', response);
+      
+      // Add check for empty or invalid response
+      if (!response.data || !response.data.data) {
+        debugLog('Empty or invalid response from streak stats API');
+        return { 
+          currentStreak: 0,
+          longestStreak: 0,
+          totalContributions: 0,
+          trends: { streak: 0, contributions: 0 }
+        };
+      }
+      
+      return response.data.data;
+    } catch (error) {
+      console.error('Failed to fetch streak stats:', formatApiError(error));
+      // Return default data structure to prevent UI errors
+      return { 
+        currentStreak: 0,
+        longestStreak: 0,
+        totalContributions: 0,
+        trends: { streak: 0, contributions: 0 }
+      };
+    }
   },
+  
   getActivityPatterns: async (startDate?: string, endDate?: string) => {
     try {
       // Build query parameters
