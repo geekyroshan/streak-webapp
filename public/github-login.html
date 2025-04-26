@@ -99,8 +99,8 @@
       const loginButton = document.getElementById('login-button');
       
       // Add your GitHub OAuth App Client ID here (this is a public value)
-      // Replace this with your actual GitHub OAuth App Client ID
-      const clientId = 'YOUR_GITHUB_CLIENT_ID';
+      // This will be populated from the server-side rendered value or environment
+      const clientId = window.GITHUB_CLIENT_ID || '<%- process.env.GITHUB_CLIENT_ID %>';
       
       // Set the OAuth URL
       const githubOAuthUrl = `https://github.com/login/oauth/authorize?client_id=${clientId}&scope=user,repo`;

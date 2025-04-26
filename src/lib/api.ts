@@ -38,8 +38,8 @@ export const authService = {
     
     // Try to use the API-based login first 
     try {
-      // Try the static login page first (which has better error handling)
-      window.location.href = '/github-login.html';
+      // Use the API endpoint that will inject environment variables
+      window.location.href = '/api/github-login';
     } catch (error) {
       console.error('Error redirecting to login page:', error);
       // Fallback to direct API endpoint
