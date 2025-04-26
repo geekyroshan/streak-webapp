@@ -33,19 +33,21 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const location = useLocation();
 
   // Check for token in URL and store it
   useEffect(() => {
-    const params = new URLSearchParams(location.search);
+    const params = new URLSearchParams(window.location.search);
     const urlToken = params.get('token');
     
     if (urlToken) {
       localStorage.setItem('token', urlToken);
       // Clean up URL
-      window.history.replaceState({}, document.title, window.location.pathname);
+      const cleanUrl = window.location.pathname;
+      if (window.history.replaceState) {
+        window.history.replaceState({}, document.title, cleanUrl);
+      }
     }
-  }, [location]);
+  }, []);
 
   // Check if user is authenticated on mount
   useEffect(() => {
