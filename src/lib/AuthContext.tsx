@@ -33,31 +33,42 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const location = useLocation();
+
+  // Check for token in URL and store it
+  useEffect(() => {
+    const params = new URLSearchParams(location.search);
+    const urlToken = params.get('token');
+    
+    if (urlToken) {
+      localStorage.setItem('token', urlToken);
+      // Clean up URL
+      window.history.replaceState({}, document.title, window.location.pathname);
+    }
+  }, [location]);
 
   // Check if user is authenticated on mount
   useEffect(() => {
     const checkAuth = async () => {
       try {
-        // Check for token from both sources - Github OAuth or regular token
-        const token = localStorage.getItem('token') || localStorage.getItem('github_token');
+        const token = localStorage.getItem('token');
         
         if (!token) {
           setIsLoading(false);
           return;
         }
-
-        // If GitHub token exists, move it to our app's expected token name
-        if (localStorage.getItem('github_token') && !localStorage.getItem('token')) {
-          localStorage.setItem('token', localStorage.getItem('github_token') || '');
-        }
         
         // Fetch user data with token
         const userData = await authService.getCurrentUser();
         setUser(userData);
+        
+        // If we're on the home page and authenticated, redirect to dashboard
+        if (window.location.pathname === '/') {
+          window.location.href = '/dashboard';
+        }
       } catch (err) {
         setError('Authentication failed. Please log in again.');
         localStorage.removeItem('token');
-        localStorage.removeItem('github_token');
       } finally {
         setIsLoading(false);
       }
@@ -65,28 +76,6 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
     checkAuth();
   }, []);
-
-  // Redirect to dashboard if authenticated and on landing page
-  useEffect(() => {
-    // This section handles automatic redirect after authentication
-    const redirectIfAuthenticated = () => {
-      const path = window.location.pathname;
-      const justAuthenticated = sessionStorage.getItem('just_authenticated') === 'true';
-      
-      // If we're authenticated and on the homepage, redirect to dashboard
-      if (!isLoading && !!user && (path === '/' || path === '')) {
-        window.location.href = '/dashboard';
-      }
-      
-      // If just authenticated via GitHub, clear flag and redirect
-      if (justAuthenticated && !isLoading) {
-        sessionStorage.removeItem('just_authenticated');
-        window.location.href = '/dashboard';
-      }
-    };
-    
-    redirectIfAuthenticated();
-  }, [isLoading, user]);
 
   // Login function
   const login = () => {
@@ -99,7 +88,6 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       await authService.logout();
       setUser(null);
       localStorage.removeItem('token');
-      localStorage.removeItem('github_token');
       window.location.href = '/';
     } catch (err) {
       setError('Logout failed');

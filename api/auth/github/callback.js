@@ -42,36 +42,12 @@ export default async function handler(req, res) {
     // Set token in cookie and redirect to frontend
     const token = tokenData.access_token;
     
-    // Get the domain for setting the cookie
-    const domain = req.headers.host && req.headers.host.includes('vercel.app') 
-      ? '.vercel.app' 
-      : req.headers.host;
+    // Set a single cookie with the token
+    res.setHeader('Set-Cookie', `token=${token}; Path=/; Max-Age=2592000; SameSite=Lax`);
     
-    // Set multiple cookies with various settings to ensure one works
-    const cookieOptions = [
-      // Standard cookie with domain
-      `github_token=${token}; Path=/; Max-Age=2592000; HttpOnly; SameSite=Lax`,
-      
-      // Cookie without domain restriction
-      `github_token_alt=${token}; Path=/; Max-Age=2592000; HttpOnly; SameSite=Lax`,
-      
-      // Cookie without HttpOnly for client access
-      `github_token_client=${token}; Path=/; Max-Age=2592000; SameSite=Lax`
-    ];
-    
-    // Set multiple cookies to ensure at least one works
-    res.setHeader('Set-Cookie', cookieOptions);
-    
-    // Check if this is a test callback or regular usage
-    const isTest = req.query.test === 'true';
-    
-    // Set redirect target based on request
-    const redirectTarget = isTest 
-      ? `/dashboard?token=${token}` // Test dashboard with debug info
-      : `/?token=${token}`;         // Main application with token
-    
-    // Redirect to the appropriate page
-    res.writeHead(302, { 'Location': redirectTarget });
+    // Redirect to the frontend with the token
+    const redirectUrl = `/?token=${token}`;
+    res.writeHead(302, { 'Location': redirectUrl });
     return res.end();
   } catch (error) {
     return res.status(500).json({
