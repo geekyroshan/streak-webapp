@@ -1,4 +1,4 @@
-// CommonJS format
-module.exports = function(req, res) {
+// ES Module format
+export default function handler(req, res) {
   res.json({ ok: true });
 } 
