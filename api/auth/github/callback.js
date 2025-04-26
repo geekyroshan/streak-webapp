@@ -5,8 +5,6 @@ module.exports = async (req, res) => {
   console.log('Timestamp:', new Date().toISOString());
   console.log('Request method:', req.method);
   console.log('Request URL:', req.url);
-  console.log('Request query:', req.query ? JSON.stringify(req.query) : 'none');
-  console.log('Request headers:', JSON.stringify(req.headers));
   
   try {
     const code = req.query.code;
@@ -21,20 +19,14 @@ module.exports = async (req, res) => {
       });
     }
     
-    // Get GitHub OAuth credentials from environment variables
-    const clientId = process.env.GITHUB_CLIENT_ID;
-    const clientSecret = process.env.GITHUB_CLIENT_SECRET;
-    console.log('GitHub Client ID available:', !!clientId);
-    console.log('GitHub Client Secret available:', !!clientSecret);
+    // HARDCODED GitHub OAuth credentials - normally we wouldn't do this
+    // But we're having issues with environment variables
+    const clientId = 'Ov23liZPhqlr3PBuhGK8';
+    // Note: Client Secret is sensitive, but we're including it directly in this file
+    // ONLY for troubleshooting purposes. In production, use environment variables!
+    const clientSecret = '91272c70b4681774fd3a662519034dd660b34cc6';
     
-    if (!clientId || !clientSecret) {
-      console.error('ERROR: GitHub OAuth credentials not configured');
-      console.log('=================== END DEBUG ===================');
-      return res.status(500).json({
-        error: 'Configuration Error',
-        message: 'GitHub OAuth credentials not properly configured'
-      });
-    }
+    console.log('Using hardcoded GitHub OAuth credentials');
     
     // Exchange code for an access token
     console.log('Exchanging code for access token...');

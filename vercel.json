@@ -7,9 +7,8 @@
   "routes": [
     { "src": "/api/github-login", "dest": "/api/github-login.js" },
     { "src": "/api/auth/github/callback", "dest": "/api/auth/github/callback.js" },
-    { "src": "/api/auth/github", "dest": "/api/index.js" },
-    { "src": "/api", "dest": "/api/index.js" },
-    { "src": "/api/(.*)", "dest": "/api/$1.js" },
+    { "src": "/api/health", "dest": "/api/health/index.js" },
+    { "src": "/api/(.*)", "dest": "/api/$1" },
     { "src": "/(.*\\.(js|css|ico|png|jpg|svg|ttf|woff|woff2)$)", "dest": "/dist/$1" },
     { "src": "/(.*)", "dest": "/dist/index.html" }
   ],
