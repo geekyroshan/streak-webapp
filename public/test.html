@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Vercel Deployment Test</title>
+  <style>
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
+      background-color: #0d1117;
+      color: #e6edf3;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      min-height: 100vh;
+      margin: 0;
+      padding: 20px;
+      text-align: center;
+    }
+    .container {
+      max-width: 600px;
+      background-color: #161b22;
+      border-radius: 6px;
+      padding: 40px;
+      box-shadow: 0 8px 24px rgba(0,0,0,0.2);
+    }
+    h1 {
+      font-size: 28px;
+      margin-bottom: 24px;
+      color: #58a6ff;
+    }
+    pre {
+      background-color: #1e2536;
+      padding: 15px;
+      border-radius: 6px;
+      overflow: auto;
+      text-align: left;
+      margin-top: 20px;
+    }
+    .button {
+      display: inline-block;
+      background-color: #238636;
+      color: white;
+      font-weight: 600;
+      padding: 12px 24px;
+      border-radius: 6px;
+      text-decoration: none;
+      font-size: 16px;
+      margin-top: 20px;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>Vercel Deployment Test</h1>
+    <p>If you can see this page, static files are being deployed correctly to Vercel.</p>
+    
+    <div>
+      <h2>API Test Links:</h2>
+      <a href="/api/health" class="button">Test API Health</a>
+      <a href="/api/auth/github" class="button">Test GitHub Auth</a>
+    </div>
+    
+    <pre id="info">Loading environment information...</pre>
+  </div>
+
+  <script>
+    // Simple script to display environment information
+    const infoElement = document.getElementById('info');
+    
+    const info = {
+      userAgent: navigator.userAgent,
+      location: window.location.href,
+      hostname: window.location.hostname,
+      protocol: window.location.protocol,
+      date: new Date().toISOString()
+    };
+    
+    infoElement.textContent = JSON.stringify(info, null, 2);
+    
+    // Check if API is responding
+    fetch('/api/health')
+      .then(response => response.json())
+      .then(data => {
+        infoElement.textContent += '\n\nAPI Health Check Response:\n' + JSON.stringify(data, null, 2);
+      })
+      .catch(error => {
+        infoElement.textContent += '\n\nAPI Health Check Error:\n' + error.message;
+      });
+  </script>
+</body>
+</html> 

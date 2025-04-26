@@ -1,5 +1,3 @@
-<!DOCTYPE html>
-<html lang="en">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
@@ -23,30 +21,6 @@
         const githubClientId = 'Ov23liZPhqlr3PBuhGK8';
         window.location.href = `https://github.com/login/oauth/authorize?client_id=${githubClientId}&scope=user,repo`;
       }
-      
-      // If there's a login error, provide an emergency button
-      window.addEventListener('load', function() {
-        // Check if we're on an error page or if hash indicates auth error
-        if (window.location.href.includes('error') || window.location.hash.includes('error')) {
-          const root = document.getElementById('root');
-          if (root) {
-            const errorDiv = document.createElement('div');
-            errorDiv.style.padding = '20px';
-            errorDiv.style.margin = '20px';
-            errorDiv.style.backgroundColor = '#ff000020';
-            errorDiv.style.border = '1px solid #ff0000';
-            errorDiv.style.borderRadius = '5px';
-            errorDiv.innerHTML = `
-              <h2>Authentication Error</h2>
-              <p>There was a problem with GitHub authentication.</p>
-              <button onclick="emergencyGitHubAuth()" style="padding:10px; background:#238636; color:white; border:none; border-radius:5px; cursor:pointer;">
-                Emergency GitHub Login
-              </button>
-            `;
-            root.appendChild(errorDiv);
-          }
-        }
-      });
     </script>
   </head>
 
@@ -55,5 +29,4 @@
     <!-- IMPORTANT: DO NOT REMOVE THIS SCRIPT TAG OR THIS VERY COMMENT! -->
     <script src="https://cdn.gpteng.co/gptengineer.js" type="module"></script>
     <script type="module" src="/src/main.tsx"></script>
-  </body>
-</html>
+  </body> 
