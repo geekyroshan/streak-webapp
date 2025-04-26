@@ -69,6 +69,12 @@
       <button onclick="forceCacheBypass()" class="button" style="background-color: #f44336; cursor: pointer;">Force Cache Bypass</button>
     </div>
     
+    <div style="margin-top: 30px;">
+      <h2>Authentication Options:</h2>
+      <button onclick="loginToTestDashboard()" class="button" style="background-color: #9c27b0; cursor: pointer;">Login to Test Dashboard</button>
+      <button onclick="loginToMainApp()" class="button" style="background-color: #009688; cursor: pointer;">Login to Main App</button>
+    </div>
+    
     <pre id="info">Loading environment information...</pre>
   </div>
 
@@ -108,6 +114,32 @@
       
       // Redirect with cache busting
       window.location.href = bypassUrl;
+    }
+    
+    // Function to login and redirect to test dashboard
+    function loginToTestDashboard() {
+      const timestamp = new Date().getTime();
+      const authUrl = `/api/auth/github?test=true&t=${timestamp}`;
+      
+      // Display what's happening
+      const infoEl = document.getElementById('info');
+      infoEl.textContent += '\n\nRedirecting to GitHub auth with test dashboard redirect: ' + authUrl;
+      
+      // Redirect to GitHub auth with test flag
+      window.location.href = authUrl;
+    }
+    
+    // Function to login and redirect to main app
+    function loginToMainApp() {
+      const timestamp = new Date().getTime();
+      const authUrl = `/api/auth/github?t=${timestamp}`;
+      
+      // Display what's happening
+      const infoEl = document.getElementById('info');
+      infoEl.textContent += '\n\nRedirecting to GitHub auth with main app redirect: ' + authUrl;
+      
+      // Redirect to GitHub auth
+      window.location.href = authUrl;
     }
   </script>
 </body>

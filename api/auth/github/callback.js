@@ -62,11 +62,16 @@ export default async function handler(req, res) {
     // Set multiple cookies to ensure at least one works
     res.setHeader('Set-Cookie', cookieOptions);
     
-    // Also store token in localStorage via redirect
-    const dashboardUrl = `/dashboard?token=${token}`;
+    // Check if this is a test callback or regular usage
+    const isTest = req.query.test === 'true';
     
-    // Redirect to the dashboard with token
-    res.writeHead(302, { 'Location': dashboardUrl });
+    // Set redirect target based on request
+    const redirectTarget = isTest 
+      ? `/dashboard?token=${token}` // Test dashboard with debug info
+      : `/?token=${token}`;         // Main application with token
+    
+    // Redirect to the appropriate page
+    res.writeHead(302, { 'Location': redirectTarget });
     return res.end();
   } catch (error) {
     return res.status(500).json({
