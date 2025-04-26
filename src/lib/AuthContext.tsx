@@ -19,7 +19,16 @@ export const useAuth = () => {
 };
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [token, setToken] = useState<string | null>(localStorage.getItem('token'));
+  const [token, setToken] = useState<string | null>(() => {
+    // Try to get token from localStorage first
+    const storedToken = localStorage.getItem('token');
+    if (storedToken) {
+      console.log('Found token in localStorage:', storedToken);
+      return storedToken;
+    }
+    return null;
+  });
+  
   const [isAuthenticated, setIsAuthenticated] = useState<boolean>(!!token);
   const navigate = useNavigate();
   const location = useLocation();
@@ -29,25 +38,35 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const params = new URLSearchParams(location.search);
     const urlToken = params.get('token');
 
-    if (urlToken) {
+    console.log('URL Token found:', urlToken);
+
+    if (urlToken && (!token || urlToken !== token)) {
+      console.log('Storing new token from URL');
       // Store token and update state
       localStorage.setItem('token', urlToken);
       setToken(urlToken);
       setIsAuthenticated(true);
       
-      // Clean up URL
-      const cleanUrl = location.pathname;
-      navigate(cleanUrl, { replace: true });
+      // Clean up URL and redirect to dashboard
+      navigate('/dashboard', { replace: true });
     }
-  }, [location, navigate]);
+  }, [location, navigate, token]);
+
+  // Effect to update isAuthenticated when token changes
+  useEffect(() => {
+    console.log('Token state changed:', token);
+    setIsAuthenticated(!!token);
+  }, [token]);
 
   const login = (newToken: string) => {
+    console.log('Login called with token:', newToken);
     localStorage.setItem('token', newToken);
     setToken(newToken);
     setIsAuthenticated(true);
   };
 
   const logout = () => {
+    console.log('Logout called');
     localStorage.removeItem('token');
     setToken(null);
     setIsAuthenticated(false);
