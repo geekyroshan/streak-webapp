@@ -15,85 +15,46 @@ import RepositoriesPage from "./pages/RepositoriesPage";
 import ActivityPage from "./pages/ActivityPage";
 import SettingsPage from "./pages/SettingsPage";
 import NotFound from "./pages/NotFound";
-import Index from "./pages/Index";
 import LogoutPage from "./pages/LogoutPage";
 
 const queryClient = new QueryClient();
 
+// Wrap protected content with Layout
+const ProtectedContent = ({ children }: { children: React.ReactNode }) => (
+  <ProtectedRoute>
+    <Layout>{children}</Layout>
+  </ProtectedRoute>
+);
+
 const App: React.FC = () => {
   return (
-    <QueryClientProvider client={queryClient}>
-      <TooltipProvider>
-        <Toaster />
-        <Sonner />
-        <Router>
+    <Router>
+      <QueryClientProvider client={queryClient}>
+        <TooltipProvider>
+          <Toaster />
+          <Sonner />
           <AuthProvider>
             <Routes>
+              {/* Public routes */}
               <Route path="/login" element={<Login />} />
               <Route path="/logout" element={<LogoutPage />} />
-              <Route
-                path="/"
-                element={
-                  <ProtectedRoute>
-                    <Navigate to="/dashboard" replace />
-                  </ProtectedRoute>
-                }
-              />
-              <Route
-                path="/dashboard"
-                element={
-                  <ProtectedRoute>
-                    <Layout><Dashboard /></Layout>
-                  </ProtectedRoute>
-                }
-              />
-              <Route
-                path="/calendar"
-                element={
-                  <ProtectedRoute>
-                    <Layout><CalendarPage /></Layout>
-                  </ProtectedRoute>
-                }
-              />
-              <Route
-                path="/streak"
-                element={
-                  <ProtectedRoute>
-                    <Layout><StreakPage /></Layout>
-                  </ProtectedRoute>
-                }
-              />
-              <Route
-                path="/repositories"
-                element={
-                  <ProtectedRoute>
-                    <Layout><RepositoriesPage /></Layout>
-                  </ProtectedRoute>
-                }
-              />
-              <Route
-                path="/activity"
-                element={
-                  <ProtectedRoute>
-                    <Layout><ActivityPage /></Layout>
-                  </ProtectedRoute>
-                }
-              />
-              <Route
-                path="/settings"
-                element={
-                  <ProtectedRoute>
-                    <Layout><SettingsPage /></Layout>
-                  </ProtectedRoute>
-                }
-              />
-              <Route path="/index" element={<Navigate to="/" replace />} />
+
+              {/* Protected routes */}
+              <Route path="/" element={<Navigate to="/dashboard" replace />} />
+              <Route path="/dashboard" element={<ProtectedContent><Dashboard /></ProtectedContent>} />
+              <Route path="/calendar" element={<ProtectedContent><CalendarPage /></ProtectedContent>} />
+              <Route path="/streak" element={<ProtectedContent><StreakPage /></ProtectedContent>} />
+              <Route path="/repositories" element={<ProtectedContent><RepositoriesPage /></ProtectedContent>} />
+              <Route path="/activity" element={<ProtectedContent><ActivityPage /></ProtectedContent>} />
+              <Route path="/settings" element={<ProtectedContent><SettingsPage /></ProtectedContent>} />
+
+              {/* Catch all */}
               <Route path="*" element={<NotFound />} />
             </Routes>
           </AuthProvider>
-        </Router>
-      </TooltipProvider>
-    </QueryClientProvider>
+        </TooltipProvider>
+      </QueryClientProvider>
+    </Router>
   );
 };
 
