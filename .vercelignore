@@ -16,4 +16,23 @@ node_modules
 README-task-master.md
 .cursor
 .cursorrules
-.windsurfrules 
+.windsurfrules
+
+# Exclude all individual API endpoints to prevent additional serverless functions
+# Only the router.js will be deployed as a serverless function
+/api/auth
+/api/github
+/api/streaks
+/api/contributions
+/api/users
+/api/repositories
+/api/health.js
+/api/index.js
+/api/catchall.js
+/api/server-adapter.js
+/api/env-check.js
+
+# These are the only files needed for the central API router
+!/api/router.js
+!/api/fallback-server.js
+!/api/utils/logging.js 

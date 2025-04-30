@@ -37,8 +37,13 @@ app.use(cors({
     'http://127.0.0.1:8080',
     'http://127.0.0.1:8081',
     'http://127.0.0.1:5173',
-    'http://127.0.0.1:3000'
-  ],
+    'http://127.0.0.1:3000',
+    // Add production origins
+    'https://streak-web-app.vercel.app',
+    'https://streak-web-app-geekyroshan.vercel.app',
+    // Dynamically allow the deployment URL from environment
+    process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : null
+  ].filter(Boolean), // Filter out null values
   credentials: true
 }));
 app.use(express.json());
