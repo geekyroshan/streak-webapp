@@ -1,19 +1,26 @@
-// Root API handler
-import { createServerHandler } from './server-adapter';
+// Unified API Handler - Single Entry Point for All Routes
+import express from 'express';
+import app from '../server/dist/index.js';
 
-// Export a handler that proxies to your Express app
+// This is the single handler for all API routes
 export default function handler(req, res) {
-  console.log('[API Root] Request received:', req.url);
+  console.log(`[Unified API] Request: ${req.method} ${req.url}`);
   
-  // For root API requests, return API status
-  if (req.url === '/api' || req.url === '/api/') {
-    return res.status(200).json({ 
-      status: 'online',
-      message: 'Streak Manager API is running',
-      version: '1.0.0'
+  // Forward all requests to Express app
+  return new Promise((resolve, reject) => {
+    // Use the Express app directly
+    app(req, res);
+    
+    // Listen for completion
+    res.on('finish', () => {
+      console.log(`[Unified API] Response complete for ${req.url}`);
+      resolve();
     });
-  }
-  
-  // Otherwise use the server adapter
-  return createServerHandler()(req, res);
+    
+    // Listen for errors
+    res.on('error', (error) => {
+      console.error(`[Unified API] Error for ${req.url}:`, error);
+      reject(error);
+    });
+  });
 } 

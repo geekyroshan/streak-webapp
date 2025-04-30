@@ -7,9 +7,13 @@ import AppError from '../utils/appError';
 
 // Helper to create and send JWT
 const signToken = (id: string) => {
-  return jwt.sign({ id }, process.env.JWT_SECRET || 'your-secret-key', {
-    expiresIn: process.env.JWT_EXPIRES_IN || '1d'
-  });
+  return jwt.sign(
+    { id }, 
+    process.env.JWT_SECRET || 'your-secret-key' as jwt.Secret, 
+    {
+      expiresIn: process.env.JWT_EXPIRES_IN || '1d'
+    }
+  );
 };
 
 // Create and send JWT as cookie

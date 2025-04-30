@@ -6,10 +6,22 @@ node_modules
 .vscode
 .idea
 
-# Local build
+# Local build artifacts
 /dist
 /build
 /server/dist
 
-# Keep only essential API files (stay under function limit)
-# api/router.js  # Uncomment to ignore if you've moved functionality to catchall.js 
+# Ignore all API files except the main entry point
+/api/auth
+/api/catchall.js
+/api/health.js
+/api/router.js
+/api/server-adapter.js
+!/api/index.js
+
+# Task Master files
+/tasks
+README-task-master.md
+.cursor
+.cursorrules
+.windsurfrules 
