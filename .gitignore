@@ -52,3 +52,21 @@ coverage
 
 # Optional eslint cache
 .eslintcache
+
+# Added by Claude Task Master
+dev-debug.log
+.idea
+.vscode
+# OS specific
+# Task files
+tasks.json
+tasks/
+
+# Cursor dev environment
+.cursor/
+.cursorrules
+.windsurfrules
+README-task-master.md
+
+
+
