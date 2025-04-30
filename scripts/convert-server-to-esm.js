@@ -3,12 +3,17 @@
  * It's used as a fallback when the TypeScript build fails
  */
 
-const fs = require('fs');
-const path = require('path');
-const util = require('util');
-const { exec } = require('child_process');
+import fs from 'fs';
+import path from 'path';
+import { fileURLToPath } from 'url';
+import { promisify } from 'util';
+import { exec } from 'child_process';
 
-const execAsync = util.promisify(exec);
+const execAsync = promisify(exec);
+
+// Get current directory (equivalent to __dirname in CommonJS)
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 // Constants
 const SRC_DIR = path.resolve(__dirname, '../server/src');
