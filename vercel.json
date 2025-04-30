@@ -36,12 +36,12 @@
     }
   ],
   "env": {
-    "MONGODB_URI": "@mongodb_uri",
-    "JWT_SECRET": "@jwt_secret",
-    "FRONTEND_URL": "@frontend_url",
-    "GITHUB_CLIENT_ID": "@github_client_id",
-    "GITHUB_CLIENT_SECRET": "@github_client_secret",
-    "GITHUB_REDIRECT_URI": "@github_redirect_uri",
+    "MONGODB_URI": "@MONGODB_URI",
+    "JWT_SECRET": "@JWT_SECRET",
+    "FRONTEND_URL": "@FRONTEND_URL",
+    "GITHUB_CLIENT_ID": "@GITHUB_CLIENT_ID",
+    "GITHUB_CLIENT_SECRET": "@GITHUB_CLIENT_SECRET",
+    "GITHUB_REDIRECT_URI": "@GITHUB_REDIRECT_URI",
     "NODE_ENV": "production"
   }
 }
