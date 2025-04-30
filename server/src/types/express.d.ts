@@ -8,6 +8,7 @@ declare module 'express' {
     params?: any;
     secure?: boolean;
     body?: any;
+    method?: string;
     headers: {
       origin?: string;
       authorization?: string;
@@ -23,9 +24,14 @@ declare module 'express' {
     cookie(name: string, value: string, options?: any): Response;
     on(event: string, callback: Function): void;
     end(): void;
+    send(body: any): Response;
   }
   
   export type NextFunction = (err?: any) => void;
+  
+  export function Router(): any;
+  export function json(): any;
+  export default function createApplication(): any;
 }
 
 declare module 'cors';
