@@ -13,7 +13,7 @@ export function getSession(req) {
   try {
     if (!req?.headers?.cookie) return null;
     const cookies = parse(req.headers.cookie || '');
-    const sessionCookie = cookies.github_session;
+    const sessionCookie = cookies.jwt;
     
     if (!sessionCookie) {
       return null;
@@ -58,7 +58,7 @@ export function setSessionCookie(res, session, options = {}) {
     
     res.setHeader(
       'Set-Cookie', 
-      serialize('github_session', JSON.stringify(session), cookieOptions)
+      serialize('jwt', JSON.stringify(session), cookieOptions)
     );
   } catch (error) {
     console.error('[Auth Utils] Error setting session cookie:', error);
