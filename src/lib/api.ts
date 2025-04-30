@@ -32,8 +32,9 @@ export const authService = {
     // Clear any existing cookies
     document.cookie = 'jwt=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;';
     
-    // Use the GitHub auth endpoint - will be proxied by Vite in development
-    const authEndpoint = `/api/auth/github`;
+    // Use the full URL with window.location.origin to prevent client-side routing
+    const baseUrl = window.location.origin;
+    const authEndpoint = `${baseUrl}/api/auth/github`;
     console.log('Redirecting to GitHub OAuth endpoint:', authEndpoint);
     window.location.href = authEndpoint;
   },

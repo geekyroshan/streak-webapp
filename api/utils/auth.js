@@ -45,11 +45,15 @@ export function setSessionCookie(res, session, options = {}) {
     path: '/',
     httpOnly: true,
     maxAge: 30 * 24 * 60 * 60, // 30 days
-    sameSite: 'lax',
+    sameSite: 'lax', 
     secure: process.env.NODE_ENV === 'production'
+    // Don't set domain for cross-domain cookies on Vercel
   };
   
   const cookieOptions = { ...defaultOptions, ...options };
+  
+  // Log the cookie options for debugging
+  console.log('Setting cookie with options:', cookieOptions);
   
   res.setHeader(
     'Set-Cookie', 
@@ -150,11 +154,61 @@ export async function handleGitHubCallback(req, res) {
     
     logger.info('Exchanging code for access token');
     
-    // In a production app, we'd exchange the code for an access token here
-    // For now, we'll redirect to the frontend with a success message
+    // Exchange code for access token
+    const tokenResponse = await fetch('https://github.com/login/oauth/access_token', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Accept': 'application/json'
+      },
+      body: JSON.stringify({
+        client_id: clientId,
+        client_secret: clientSecret,
+        code: code
+      })
+    });
+    
+    const tokenData = await tokenResponse.json();
+    
+    if (!tokenData.access_token) {
+      logger.error('Failed to get access token from GitHub', tokenData);
+      res.statusCode = 500;
+      res.setHeader('Content-Type', 'application/json');
+      res.end(JSON.stringify({
+        error: 'Authentication error',
+        message: 'Failed to exchange code for access token'
+      }));
+      return;
+    }
+    
+    // Get user data from GitHub
+    const userResponse = await fetch('https://api.github.com/user', {
+      headers: {
+        'Authorization': `token ${tokenData.access_token}`,
+        'User-Agent': 'GitHub-Streak-Manager'
+      }
+    });
+    
+    const githubUser = await userResponse.json();
+    
+    // Create a session
+    const session = {
+      token: tokenData.access_token,
+      user: {
+        id: githubUser.id,
+        username: githubUser.login,
+        name: githubUser.name,
+        avatar: githubUser.avatar_url
+      }
+    };
+    
+    // Set the session cookie
+    setSessionCookie(res, session);
+    
+    // Redirect to dashboard
     const frontendUrl = process.env.FRONTEND_URL || '/';
     res.statusCode = 302;
-    res.setHeader('Location', `${frontendUrl}?auth=success`);
+    res.setHeader('Location', `${frontendUrl}/dashboard`);
     res.end();
   } catch (error) {
     logger.error('Error handling GitHub callback:', error);
