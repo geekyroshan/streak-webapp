@@ -35,4 +35,5 @@ README-task-master.md
 # These are the only files needed for the central API router
 !/api/router.js
 !/api/fallback-server.js
-!/api/utils/logging.js 
+!/api/utils/logging.js
+!/api/utils/auth.js 

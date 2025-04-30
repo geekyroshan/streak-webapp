@@ -24,7 +24,9 @@ console.log('Client ID from config:', require('./config/github').githubConfig.cl
 // Connect to MongoDB
 connectDatabase();
 
-const app = express();
+// Type assertion for Express to fix TypeScript errors
+const expressApp = express as any;
+const app = expressApp();
 const PORT = process.env.PORT || 5000;
 
 // Middleware
@@ -46,7 +48,7 @@ app.use(cors({
   ].filter(Boolean), // Filter out null values
   credentials: true
 }));
-app.use(express.json());
+app.use((expressApp as any).json());
 app.use(cookieParser());
 
 // Routes

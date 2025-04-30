@@ -1,6 +1,7 @@
 // Consolidated API router for Vercel
-import { createLogger } from './utils/logging';
-import createFallbackServer from './fallback-server';
+import { createLogger } from './utils/logging.js';
+import createFallbackServer from './fallback-server.js';
+import { handleGitHubAuth, handleGitHubCallback } from './utils/auth.js';
 
 // Create a logger for this module
 const logger = createLogger('Router');
@@ -42,6 +43,21 @@ async function getExpressApp() {
 // Create a cache for the app instance
 let appInstance = null;
 
+// Parse query parameters from URL
+function parseQuery(url) {
+  const params = {};
+  const queryString = url.split('?')[1];
+  if (!queryString) return params;
+  
+  const pairs = queryString.split('&');
+  for (const pair of pairs) {
+    const [key, value] = pair.split('=');
+    params[decodeURIComponent(key)] = decodeURIComponent(value || '');
+  }
+  
+  return params;
+}
+
 /**
  * Main API router
  * 
@@ -50,6 +66,20 @@ let appInstance = null;
  */
 export default async function handler(req, res) {
   logger.info(`Request: ${req.method} ${req.url}`);
+  
+  // Parse query parameters
+  req.query = parseQuery(req.url);
+  
+  // Special handling for GitHub auth routes to avoid Express app loading
+  if (req.url.startsWith('/api/auth/github')) {
+    if (req.url.includes('/callback')) {
+      await handleGitHubCallback(req, res);
+      return;
+    } else {
+      await handleGitHubAuth(req, res);
+      return;
+    }
+  }
   
   // Get or initialize the Express app
   if (!appInstance) {
