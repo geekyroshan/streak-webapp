@@ -1,38 +1,46 @@
 // api/catchall.js - Catchall handler for API routes not explicitly defined
-import app from '../server/dist/index.js';
+import { createServerHandler } from './server-adapter';
 import { createLogger } from './utils/logging';
+import express from 'express';
 
 // Create a logger for this module
 const logger = createLogger('Catchall');
 
-/**
- * Catchall API handler
- * 
- * This handler serves as a fallback for API routes that don't have
- * explicit handlers defined in the /api directory but do exist in
- * the Express application.
- * 
- * It's used by Vercel as a catchall route when no specific file-based
- * route matches the incoming request.
- */
-export default function handler(req, res) {
-  logger.info(`Catchall handling: ${req.method} ${req.url}`);
-  
-  // Forward the request to Express app
-  return new Promise((resolve, reject) => {
-    // Handle the request with the app
-    app(req, res);
+// Configure the routes for this serverless function
+const configureRoutes = (app) => {
+  // Add a simple catch-all route to report which route was attempted
+  app.all('/api/*', (req, res) => {
+    logger.warn(`No specific handler found for: ${req.method} ${req.url}`);
     
-    // Listen for completion
-    res.on('finish', () => {
-      logger.info(`Catchall response finished for ${req.url}`);
-      resolve();
-    });
-    
-    // Listen for errors
-    res.on('error', (error) => {
-      logger.error(`Catchall error for ${req.url}:`, error);
-      reject(error);
+    return res.status(404).json({
+      error: 'Not found',
+      message: `API route '${req.url}' not found or not implemented in serverless mode`,
+      requestedMethod: req.method,
+      requestedPath: req.url,
+      serverlessMode: true
     });
   });
+};
+
+// Create a handler that configures and uses the Express app
+const handler = createServerHandler(configureRoutes);
+
+export default async function catchallHandler(req, res) {
+  logger.info(`Catchall handling: ${req.method} ${req.url}`);
+  
+  try {
+    // Pass the request to our handler
+    return await handler(req, res);
+  } catch (error) {
+    logger.error(`Catchall error for ${req.url}:`, error);
+    
+    // Only send error response if headers haven't been sent yet
+    if (!res.headersSent) {
+      return res.status(500).json({
+        error: 'Internal server error',
+        message: error.message,
+        path: req.url
+      });
+    }
+  }
 } 

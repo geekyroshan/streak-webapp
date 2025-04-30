@@ -1,7 +1,7 @@
 import axios from 'axios';
 
-// API base URL
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5002/api';
+// API base URL - Use relative path in development to leverage Vite proxy
+const API_URL = import.meta.env.VITE_API_URL || '/api';
 
 // Create axios instance with credentials
 const api = axios.create({
@@ -32,8 +32,8 @@ export const authService = {
     // Clear any existing cookies
     document.cookie = 'jwt=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;';
     
-    // Use the standalone GitHub auth implementation
-    const authEndpoint = `${window.location.origin}/api/auth/github-auth`;
+    // Use the GitHub auth endpoint - will be proxied by Vite in development
+    const authEndpoint = `/api/auth/github`;
     console.log('Redirecting to GitHub OAuth endpoint:', authEndpoint);
     window.location.href = authEndpoint;
   },
@@ -752,7 +752,7 @@ export async function getUser() {
 // Add a function to initiate GitHub OAuth
 export function initiateGitHubOAuth() {
   // For OAuth, we redirect directly to the endpoint instead of making an API call
-  const authEndpoint = `${window.location.origin}/api/auth/github-auth`;
+  const authEndpoint = `/api/auth/github`;
   console.log('Redirecting to GitHub OAuth endpoint:', authEndpoint);
   window.location.href = authEndpoint;
 }
