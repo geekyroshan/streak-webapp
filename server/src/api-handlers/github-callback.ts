@@ -1,5 +1,6 @@
 import { VercelRequest, VercelResponse } from '@vercel/node';
 import { githubCallback } from '../controllers/auth.controller';
+import { Request, Response, NextFunction } from 'express';
 
 // Handle CORS
 const allowCors = (fn: (req: VercelRequest, res: VercelResponse) => Promise<any>) => async (req: VercelRequest, res: VercelResponse) => {
@@ -17,7 +18,7 @@ const allowCors = (fn: (req: VercelRequest, res: VercelResponse) => Promise<any>
 
 const handler = async (req: VercelRequest, res: VercelResponse) => {
   if (req.method === 'GET') {
-    return githubCallback(req, res, (err: any) => {
+    return githubCallback(req as unknown as Request, res as unknown as Response, (err: any) => {
       if (err) {
         console.error('Error in callback:', err);
         return res.status(err.statusCode || 500).json({
