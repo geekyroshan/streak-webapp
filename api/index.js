@@ -1,26 +1,33 @@
-// Unified API Handler - Single Entry Point for All Routes
+// Simplified API Handler for Vercel
 import express from 'express';
-import app from '../server/dist/index.js';
+import { createServer } from 'http';
 
 // This is the single handler for all API routes
 export default function handler(req, res) {
-  console.log(`[Unified API] Request: ${req.method} ${req.url}`);
+  console.log(`[API] Request: ${req.method} ${req.url}`);
   
-  // Forward all requests to Express app
-  return new Promise((resolve, reject) => {
-    // Use the Express app directly
-    app(req, res);
+  // For now, redirect GitHub auth requests directly to GitHub
+  if (req.url.includes('/api/auth/github') && !req.url.includes('/callback')) {
+    console.log('Handling GitHub auth request');
     
-    // Listen for completion
-    res.on('finish', () => {
-      console.log(`[Unified API] Response complete for ${req.url}`);
-      resolve();
-    });
+    const clientId = process.env.GITHUB_CLIENT_ID;
+    const redirectUri = process.env.GITHUB_REDIRECT_URI || 'https://github-streak-manager.vercel.app/api/auth/github/callback';
     
-    // Listen for errors
-    res.on('error', (error) => {
-      console.error(`[Unified API] Error for ${req.url}:`, error);
-      reject(error);
-    });
+    // Generate authorization URL
+    const githubAuthUrl = `https://github.com/login/oauth/authorize?client_id=${clientId}&redirect_uri=${redirectUri}&scope=user%20repo&allow_signup=false&prompt=login`;
+    
+    console.log('Redirecting to GitHub:', githubAuthUrl);
+    return res.redirect(302, githubAuthUrl);
+  }
+  
+  // For other requests, show API status
+  return res.status(200).json({
+    status: 'online',
+    message: 'GitHub Streak Manager API',
+    endpoints: {
+      github_auth: '/api/auth/github',
+      health: '/api/health'
+    },
+    note: "Server is being reconfigured for Vercel deployment"
   });
 } 
