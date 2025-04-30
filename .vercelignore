@@ -11,14 +11,6 @@ node_modules
 /build
 /server/dist
 
-# Ignore all API files except the main entry point
-/api/auth
-/api/catchall.js
-/api/health.js
-/api/router.js
-/api/server-adapter.js
-!/api/index.js
-
 # Task Master files
 /tasks
 README-task-master.md

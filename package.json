@@ -5,15 +5,12 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "vite build && cd server && npm install && (npm run build || (echo 'TypeScript build failed, using fallback build' && mkdir -p dist && cp -r src/* dist/ && find dist -name '*.ts' -exec bash -c 'for file; do mv \"$file\" \"${file%.ts}.js\"' _ {} \\;))",
-    "build:dev": "vite build --mode development",
-    "lint": "eslint .",
-    "preview": "vite preview",
     "server:dev": "cd server && npm run dev",
-    "server:build": "cd server && npm run build",
-    "server:start": "cd server && npm start",
-    "install:all": "npm install && cd server && npm install",
-    "dev:all": "concurrently \"npm run dev\" \"npm run server:dev\""
+    "dev:all": "concurrently \"npm run dev\" \"npm run server:dev\"",
+    "build": "vite build && npm run build:server",
+    "build:server": "cd server && npm install && (npm run build || (echo 'TypeScript build failed, creating ES module compatible JavaScript' && node ../scripts/convert-server-to-esm.js))",
+    "lint": "eslint . --ext ts,tsx --report-unused-disable-directives --max-warnings 0",
+    "preview": "vite preview"
   },
   "dependencies": {
     "@hookform/resolvers": "^3.9.0",
