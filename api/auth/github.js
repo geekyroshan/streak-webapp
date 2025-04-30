@@ -1,17 +1,32 @@
-// Direct GitHub OAuth handler
-export default function handler(req, res) {
-  console.log('[Auth] GitHub OAuth request');
+// api/auth/github.js - GitHub OAuth initial authentication
+import { createServerHandler } from '../server-adapter';
+import { createLogger } from '../utils/logging';
+
+// Create a logger for this module
+const logger = createLogger('Auth:GitHub');
+
+// Create a handler that delegates to the Express server
+const handler = createServerHandler();
+
+export default async function githubAuthHandler(req, res) {
+  logger.info('GitHub Auth request:', req.url);
   
-  const clientId = process.env.GITHUB_CLIENT_ID;
-  const redirectUri = process.env.GITHUB_REDIRECT_URI || 'https://github-streak-manager.vercel.app/api/auth/github/callback';
-  const scope = 'user repo';
-  
-  // Generate random state for security
-  const randomState = `st_${Math.random().toString(36).substring(2, 15)}`;
-  
-  // Generate authorization URL
-  const githubAuthUrl = `https://github.com/login/oauth/authorize?client_id=${clientId}&redirect_uri=${redirectUri}&scope=${scope}&allow_signup=false&prompt=login&state=${randomState}`;
-  
-  console.log('Redirecting to GitHub:', githubAuthUrl);
-  return res.redirect(302, githubAuthUrl);
+  try {
+    // Add a prefix to the URL so it routes correctly to the Express handler
+    req.url = `/api/auth/github`;
+    logger.info('Forwarding to:', req.url);
+    
+    // Forward to the Express handler
+    return await handler(req, res);
+  } catch (error) {
+    logger.error('Error in GitHub auth:', error);
+    
+    // Only send error response if headers haven't been sent yet
+    if (!res.headersSent) {
+      return res.status(500).json({
+        error: 'Internal server error',
+        message: error.message
+      });
+    }
+  }
 } 

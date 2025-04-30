@@ -32,8 +32,10 @@ export const authService = {
     // Clear any existing cookies
     document.cookie = 'jwt=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;';
     
-    // Redirect to GitHub auth with prompt=login parameter to force login screen
-    window.location.href = `${API_URL}/auth/github`;
+    // Use the standalone GitHub auth implementation
+    const authEndpoint = `${window.location.origin}/api/auth/github-auth`;
+    console.log('Redirecting to GitHub OAuth endpoint:', authEndpoint);
+    window.location.href = authEndpoint;
   },
   logout: async () => {
     console.log('Client-side logout: Starting');
@@ -69,6 +71,17 @@ export const authService = {
   getCurrentUser: async () => {
     const response = await api.get('/auth/me');
     return response.data.data.user;
+  },
+
+  // New methods to integrate the standalone auth implementation
+  checkAuthStatus: async () => {
+    try {
+      const response = await api.get('/auth/status', { withCredentials: true });
+      return response.data.authenticated;
+    } catch (error) {
+      console.error('Error checking auth status:', error);
+      return false;
+    }
   }
 };
 
@@ -724,3 +737,44 @@ export const githubFileService = {
 };
 
 export default api; 
+
+// Check if the file exists first to avoid errors
+export async function getUser() {
+  try {
+    const response = await axios.get(`${API_URL}/user`, { withCredentials: true });
+    return response.data;
+  } catch (error) {
+    console.error('Error fetching user:', error);
+    return null;
+  }
+}
+
+// Add a function to initiate GitHub OAuth
+export function initiateGitHubOAuth() {
+  // For OAuth, we redirect directly to the endpoint instead of making an API call
+  const authEndpoint = `${window.location.origin}/api/auth/github-auth`;
+  console.log('Redirecting to GitHub OAuth endpoint:', authEndpoint);
+  window.location.href = authEndpoint;
+}
+
+// Add a function to check if the user is authenticated
+export async function checkAuth() {
+  try {
+    const response = await axios.get(`${API_URL}/auth/status`, { withCredentials: true });
+    return response.data.authenticated;
+  } catch (error) {
+    console.error('Error checking auth status:', error);
+    return false;
+  }
+}
+
+// Add a function to log out
+export async function logout() {
+  try {
+    await axios.post(`${API_URL}/auth/logout`, {}, { withCredentials: true });
+    return true;
+  } catch (error) {
+    console.error('Error logging out:', error);
+    return false;
+  }
+} 

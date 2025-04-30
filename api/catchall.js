@@ -1,8 +1,22 @@
-// Catchall handler for remaining API routes
+// api/catchall.js - Catchall handler for API routes not explicitly defined
 import app from '../server/dist/index.js';
+import { createLogger } from './utils/logging';
 
+// Create a logger for this module
+const logger = createLogger('Catchall');
+
+/**
+ * Catchall API handler
+ * 
+ * This handler serves as a fallback for API routes that don't have
+ * explicit handlers defined in the /api directory but do exist in
+ * the Express application.
+ * 
+ * It's used by Vercel as a catchall route when no specific file-based
+ * route matches the incoming request.
+ */
 export default function handler(req, res) {
-  console.log('[API Catchall] Request received:', req.method, req.url);
+  logger.info(`Catchall handling: ${req.method} ${req.url}`);
   
   // Forward the request to Express app
   return new Promise((resolve, reject) => {
@@ -11,13 +25,13 @@ export default function handler(req, res) {
     
     // Listen for completion
     res.on('finish', () => {
-      console.log('[API Catchall] Response finished');
+      logger.info(`Catchall response finished for ${req.url}`);
       resolve();
     });
     
     // Listen for errors
     res.on('error', (error) => {
-      console.error('[API Catchall] Response error:', error);
+      logger.error(`Catchall error for ${req.url}:`, error);
       reject(error);
     });
   });

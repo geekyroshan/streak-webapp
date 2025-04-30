@@ -1,33 +1,57 @@
-// Simplified API Handler for Vercel
-import express from 'express';
-import { createServer } from 'http';
+// api/index.js - Main API entry point and documentation
+import { createLogger } from './utils/logging';
 
-// This is the single handler for all API routes
+// Create a logger for this module
+const logger = createLogger('API');
+
+/**
+ * Main API handler
+ * 
+ * This serves as both:
+ * 1. A unified entry point for the API
+ * 2. Documentation for available endpoints
+ * 3. A status endpoint showing API health
+ * 
+ * This endpoint is hit when a user visits /api directly.
+ */
 export default function handler(req, res) {
-  console.log(`[API] Request: ${req.method} ${req.url}`);
+  logger.info(`Root API request: ${req.method} ${req.url}`);
   
-  // For now, redirect GitHub auth requests directly to GitHub
-  if (req.url.includes('/api/auth/github') && !req.url.includes('/callback')) {
-    console.log('Handling GitHub auth request');
-    
-    const clientId = process.env.GITHUB_CLIENT_ID;
-    const redirectUri = process.env.GITHUB_REDIRECT_URI || 'https://github-streak-manager.vercel.app/api/auth/github/callback';
-    
-    // Generate authorization URL
-    const githubAuthUrl = `https://github.com/login/oauth/authorize?client_id=${clientId}&redirect_uri=${redirectUri}&scope=user%20repo&allow_signup=false&prompt=login`;
-    
-    console.log('Redirecting to GitHub:', githubAuthUrl);
-    return res.redirect(302, githubAuthUrl);
-  }
-  
-  // For other requests, show API status
+  // Status endpoint - show API information
   return res.status(200).json({
     status: 'online',
     message: 'GitHub Streak Manager API',
+    version: process.env.API_VERSION || '1.0.0',
+    serverTime: new Date().toISOString(),
     endpoints: {
-      github_auth: '/api/auth/github',
+      // Auth endpoints
+      auth: {
+        github: '/api/auth/github',
+        callback: '/api/auth/github-callback',
+        logout: '/api/auth/logout',
+        me: '/api/auth/me'
+      },
+      // GitHub endpoints
+      github: {
+        profile: '/api/github/profile',
+        repositories: '/api/github/repositories',
+        activities: '/api/github/activities',
+        user: '/api/github/user'
+      },
+      // Streak endpoints
+      streaks: {
+        get: '/api/streaks/get',
+        create: '/api/streaks/create',
+        update: '/api/streaks/update'
+      },
+      // Contributions endpoints
+      contributions: {
+        index: '/api/contributions',
+        stats: '/api/contributions/stats'
+      },
+      // Utility endpoints
       health: '/api/health'
     },
-    note: "Server is being reconfigured for Vercel deployment"
+    structure: "Organized into category-based subdirectories: auth/, github/, streaks/, contributions/"
   });
 } 

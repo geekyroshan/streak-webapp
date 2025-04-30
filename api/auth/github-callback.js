@@ -1,25 +1,25 @@
-// api/auth/me.js - Get current user profile
+// api/auth/github-callback.js - Handle GitHub OAuth callback
 import { createServerHandler } from '../server-adapter';
 import { createLogger } from '../utils/logging';
 
 // Create a logger for this module
-const logger = createLogger('Auth:Me');
+const logger = createLogger('Auth:GitHub:Callback');
 
 // Create a handler that delegates to the Express server
 const handler = createServerHandler();
 
-export default async function meHandler(req, res) {
-  logger.info('User profile request');
+export default async function githubCallbackHandler(req, res) {
+  logger.info('GitHub Callback request with code:', req.query.code ? 'present' : 'missing');
   
   try {
     // Add a prefix to the URL so it routes correctly to the Express handler
-    req.url = `/api/auth/me`;
+    req.url = `/api/auth/github/callback?${new URLSearchParams(req.query).toString()}`;
     logger.info('Forwarding to:', req.url);
     
     // Forward to the Express handler
     return await handler(req, res);
   } catch (error) {
-    logger.error('Error in user profile endpoint:', error);
+    logger.error('Error in GitHub callback:', error);
     
     // Only send error response if headers haven't been sent yet
     if (!res.headersSent) {

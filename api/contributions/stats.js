@@ -1,25 +1,21 @@
-// api/auth/me.js - Get current user profile
+// api/contributions/stats.js - Contributions stats endpoint
 import { createServerHandler } from '../server-adapter';
-import { createLogger } from '../utils/logging';
-
-// Create a logger for this module
-const logger = createLogger('Auth:Me');
 
 // Create a handler that delegates to the Express server
 const handler = createServerHandler();
 
-export default async function meHandler(req, res) {
-  logger.info('User profile request');
+export default async function contributionsStatsHandler(req, res) {
+  console.log('[API Proxy] Contributions Stats request:', req.url);
   
   try {
     // Add a prefix to the URL so it routes correctly to the Express handler
-    req.url = `/api/auth/me`;
-    logger.info('Forwarding to:', req.url);
+    req.url = `/api/contributions/stats${req.url.replace(/^\/api\/contributions\/stats/, '')}`;
+    console.log('[API Proxy] Forwarding to:', req.url);
     
     // Forward to the Express handler
     return await handler(req, res);
   } catch (error) {
-    logger.error('Error in user profile endpoint:', error);
+    console.error('[API Proxy] Error in contributions stats endpoint:', error);
     
     // Only send error response if headers haven't been sent yet
     if (!res.headersSent) {
