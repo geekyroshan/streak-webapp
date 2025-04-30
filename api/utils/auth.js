@@ -10,14 +10,15 @@ const logger = createLogger('Auth');
  * @returns {Object|null} The user session or null if not authenticated
  */
 export function getSession(req) {
-  const cookies = parse(req.headers.cookie || '');
-  const sessionCookie = cookies.github_session;
-  
-  if (!sessionCookie) {
-    return null;
-  }
-  
   try {
+    if (!req?.headers?.cookie) return null;
+    const cookies = parse(req.headers.cookie || '');
+    const sessionCookie = cookies.github_session;
+    
+    if (!sessionCookie) {
+      return null;
+    }
+    
     return JSON.parse(sessionCookie);
   } catch (error) {
     console.error('[Auth Utils] Error parsing session cookie:', error);
@@ -41,24 +42,27 @@ export function isAuthenticated(req) {
  * @param {Object} options - Cookie options
  */
 export function setSessionCookie(res, session, options = {}) {
-  const defaultOptions = {
-    path: '/',
-    httpOnly: true,
-    maxAge: 30 * 24 * 60 * 60, // 30 days
-    sameSite: 'lax', 
-    secure: process.env.NODE_ENV === 'production'
-    // Don't set domain for cross-domain cookies on Vercel
-  };
-  
-  const cookieOptions = { ...defaultOptions, ...options };
-  
-  // Log the cookie options for debugging
-  console.log('Setting cookie with options:', cookieOptions);
-  
-  res.setHeader(
-    'Set-Cookie', 
-    serialize('github_session', JSON.stringify(session), cookieOptions)
-  );
+  try {
+    const defaultOptions = {
+      path: '/',
+      httpOnly: true,
+      maxAge: 30 * 24 * 60 * 60, // 30 days
+      sameSite: 'lax', 
+      secure: process.env.NODE_ENV === 'production'
+    };
+    
+    const cookieOptions = { ...defaultOptions, ...options };
+    
+    // Log the cookie options for debugging
+    console.log('Setting cookie with options:', cookieOptions);
+    
+    res.setHeader(
+      'Set-Cookie', 
+      serialize('github_session', JSON.stringify(session), cookieOptions)
+    );
+  } catch (error) {
+    console.error('[Auth Utils] Error setting session cookie:', error);
+  }
 }
 
 /**
@@ -107,12 +111,16 @@ export async function handleGitHubAuth(req, res) {
     res.end();
   } catch (error) {
     logger.error('Error handling GitHub auth:', error);
-    res.statusCode = 500;
-    res.setHeader('Content-Type', 'application/json');
-    res.end(JSON.stringify({
-      error: 'Server error',
-      message: error.message || 'An error occurred during GitHub authentication'
-    }));
+    
+    // Make sure we always respond
+    if (!res.headersSent) {
+      res.statusCode = 500;
+      res.setHeader('Content-Type', 'application/json');
+      res.end(JSON.stringify({
+        error: 'Server error',
+        message: error.message || 'An error occurred during GitHub authentication'
+      }));
+    }
   }
 }
 
@@ -123,7 +131,8 @@ export async function handleGitHubCallback(req, res) {
   logger.info('Handling GitHub callback');
   
   try {
-    const code = req.query.code;
+    // Get the code from the URL query parameters
+    const code = req?.query?.code;
     
     if (!code) {
       logger.error('No code received from GitHub');
@@ -168,6 +177,10 @@ export async function handleGitHubCallback(req, res) {
       })
     });
     
+    if (!tokenResponse.ok) {
+      throw new Error(`GitHub token request failed with status ${tokenResponse.status}`);
+    }
+    
     const tokenData = await tokenResponse.json();
     
     if (!tokenData.access_token) {
@@ -176,7 +189,8 @@ export async function handleGitHubCallback(req, res) {
       res.setHeader('Content-Type', 'application/json');
       res.end(JSON.stringify({
         error: 'Authentication error',
-        message: 'Failed to exchange code for access token'
+        message: 'Failed to exchange code for access token',
+        details: tokenData.error_description || 'GitHub did not provide an access token'
       }));
       return;
     }
@@ -188,6 +202,10 @@ export async function handleGitHubCallback(req, res) {
         'User-Agent': 'GitHub-Streak-Manager'
       }
     });
+    
+    if (!userResponse.ok) {
+      throw new Error(`GitHub user request failed with status ${userResponse.status}`);
+    }
     
     const githubUser = await userResponse.json();
     
@@ -212,11 +230,15 @@ export async function handleGitHubCallback(req, res) {
     res.end();
   } catch (error) {
     logger.error('Error handling GitHub callback:', error);
-    res.statusCode = 500;
-    res.setHeader('Content-Type', 'application/json');
-    res.end(JSON.stringify({
-      error: 'Server error',
-      message: error.message || 'An error occurred during GitHub authentication callback'
-    }));
+    
+    // Make sure we always respond
+    if (!res.headersSent) {
+      res.statusCode = 500;
+      res.setHeader('Content-Type', 'application/json');
+      res.end(JSON.stringify({
+        error: 'Server error',
+        message: error.message || 'An error occurred during GitHub authentication callback'
+      }));
+    }
   }
 } 
