@@ -1,0 +1,15 @@
+# Development files
+node_modules
+.env
+.git
+.github
+.vscode
+.idea
+
+# Local build
+/dist
+/build
+/server/dist
+
+# Keep only essential API files (stay under function limit)
+# api/router.js  # Uncomment to ignore if you've moved functionality to catchall.js 

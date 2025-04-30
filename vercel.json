@@ -23,8 +23,12 @@
       "dest": "/api/auth/$1"
     },
     {
-      "src": "/api/(.*)",
-      "dest": "/api/$1"
+      "src": "/api/health",
+      "dest": "/api/health.js"
+    },
+    {
+      "src": "/api/(.+)",
+      "dest": "/api/catchall.js"
     },
     {
       "src": "/(.*\\.[a-z0-9]+$)",
