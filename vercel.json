@@ -34,14 +34,5 @@
       "src": "/(.*)",
       "dest": "/index.html"
     }
-  ],
-  "env": {
-    "MONGODB_URI": "@MONGODB_URI",
-    "JWT_SECRET": "@JWT_SECRET",
-    "FRONTEND_URL": "@FRONTEND_URL",
-    "GITHUB_CLIENT_ID": "@GITHUB_CLIENT_ID",
-    "GITHUB_CLIENT_SECRET": "@GITHUB_CLIENT_SECRET",
-    "GITHUB_REDIRECT_URI": "@GITHUB_REDIRECT_URI",
-    "NODE_ENV": "production"
-  }
+  ]
 }
